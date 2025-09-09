@@ -1,6 +1,6 @@
-# Release Scripts
+# WP Build Tools
 
-This directory contains automated release scripts for this WordPress plugin.
+Some scripts to help handle builds, releases, testing, etc.
 
 ## Prerequisites
 
