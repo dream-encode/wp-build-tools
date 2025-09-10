@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.3.0] - 2025-09-10
 * ENH: Try interactive_menu_select function.
 
 ## [0.2.8] - 2025-09-10
