@@ -136,7 +136,39 @@ if [ ! -z "$1" ]; then
 else
     # Interactive mode - ask if they want to bump version.
     if confirm "Current version in package.json is $CURRENT_VERSION. Do you want to bump the version now?"; then
-        package_version_bump_interactive
+        echo ""
+        echo "Select version bump type:"
+
+        bump_options=(
+            "major   - Breaking changes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "major"))"
+            "minor   - New features (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "minor"))"
+            "patch   - Bug fixes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "patch"))"
+            "hotfix  - Critical fixes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "hotfix"))"
+            "custom  - Enter custom version"
+            "skip    - Keep current version"
+        )
+
+        PS3="Choose an option (1-6): "
+        COLUMNS=1
+        select choice in "${bump_options[@]}"; do
+            case $REPLY in
+                3) package_version_bump_auto "major"; break;;
+                2) package_version_bump_auto "minor"; break;;
+                1) package_version_bump_auto "patch"; break;;
+                4) package_version_bump_auto "hotfix"; break;;
+                5)
+                    read -e -p "Enter custom version: " -i "$CURRENT_VERSION" NEW_VERSION
+                    if [ -z "$NEW_VERSION" ]; then
+                        echo "No version supplied. Keeping current version."
+                    else
+                        bump_version_package_json "$NEW_VERSION"
+                        echo "Updated version to $NEW_VERSION."
+                    fi
+                    break;;
+                6) echo "Keeping current version $CURRENT_VERSION."; break;;
+                *) echo "Invalid option. Please select 1-6.";;
+            esac
+        done
     else
         echo "Staying at version $CURRENT_VERSION."
     fi
@@ -164,12 +196,12 @@ if changelog_exists; then
         git add CHANGELOG.md
         gc "Update CHANGELOG.md for release $CURRENT_VERSION"
     else
-        echo "WARNING: No [NEXT_VERSION] entry found at top of CHANGELOG.md"
+        echo "WARNING: No 0.1.1 entry found at top of CHANGELOG.md"
         echo "   Top entry is: [$CHANGELOG_TOP_ENTRY]"
-        echo "   Expected: [NEXT_VERSION]"
+        echo "   Expected: 0.1.1"
 
         if ! confirm "Continue without updating changelog?"; then
-            echo "Release cancelled. Please add a [NEXT_VERSION] entry to CHANGELOG.md"
+            echo "Release cancelled. Please add a 0.1.1 entry to CHANGELOG.md"
             exit 1
         fi
     fi
@@ -265,3 +297,6 @@ fi
 echo ""
 echo "SUCCESS: Release process completed successfully!"
 echo "GitHub Release: https://github.com/$(git config --get remote.origin.url | sed 's/.*github.com[:/]\([^.]*\).*/\1/')/releases/tag/v$CURRENT_VERSION"
+
+
+

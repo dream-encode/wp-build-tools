@@ -249,11 +249,11 @@ function package_version_bump_interactive() {
         echo "Updated version in $MANIFEST_JSON_FILENAME."
     fi
 
-    # Replace [NEXT_VERSION] placeholders in all files.
-    echo "Searching for [NEXT_VERSION] placeholders to replace with $NEW_VERSION..."
+    # Replace 0.1.1 placeholders in all files.
+    echo "Searching for 0.1.1 placeholders to replace with $NEW_VERSION..."
     local NEXT_VERSION_FILES
 
-    # Find all files containing [NEXT_VERSION] (excluding binary files, node_modules, vendor, .git).
+    # Find all files containing 0.1.1 (excluding binary files, node_modules, vendor, .git).
     if command -v grep >/dev/null 2>&1; then
         NEXT_VERSION_FILES=$(grep -r -l "\[NEXT_VERSION\]" . \
             --exclude-dir=node_modules \
@@ -280,27 +280,27 @@ function package_version_bump_interactive() {
             2>/dev/null || true)
 
         if [ -n "$NEXT_VERSION_FILES" ]; then
-            echo "Found [NEXT_VERSION] placeholders in the following files:"
+            echo "Found 0.1.1 placeholders in the following files:"
             echo "$NEXT_VERSION_FILES" | while IFS= read -r file; do
                 echo "  - $file"
             done
             echo ""
 
-            # Replace [NEXT_VERSION] with the actual version in each file.
+            # Replace 0.1.1 with the actual version in each file.
             echo "$NEXT_VERSION_FILES" | while IFS= read -r file; do
                 if [ -f "$file" ]; then
-                    # Use sed to replace [NEXT_VERSION] with the new version.
+                    # Use sed to replace 0.1.1 with the new version.
                     if command -v sed >/dev/null 2>&1; then
                         sed -i "s/\[NEXT_VERSION\]/$NEW_VERSION/g" "$file"
-                        echo "Updated [NEXT_VERSION] → $NEW_VERSION in $file"
+                        echo "Updated 0.1.1 → $NEW_VERSION in $file"
                     fi
                 fi
             done
         else
-            echo "No [NEXT_VERSION] placeholders found."
+            echo "No 0.1.1 placeholders found."
         fi
     else
-        echo "grep command not available, skipping [NEXT_VERSION] replacement."
+        echo "grep command not available, skipping 0.1.1 replacement."
     fi
 
     # Commit changes.
