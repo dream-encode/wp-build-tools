@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.2.8] - 2025-09-10
+* BUG: Only validate the changelog formatting before the version bump, don't update the version yet.
+
 ## [0.2.7] - 2025-09-10
 * BUG: FIx .sh files exclusion.
 

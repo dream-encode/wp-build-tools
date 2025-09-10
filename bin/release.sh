@@ -141,20 +141,7 @@ if changelog_exists; then
     CHANGELOG_TOP_ENTRY=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[([^]]*)\].*/\1/')
 
     if [ "$CHANGELOG_TOP_ENTRY" = "NEXT_VERSION" ]; then
-        # Update NEXT_VERSION entry with version and current date.
-        CURRENT_DATE=$(date +%Y-%m-%d)
-
-        # Handle both old format 0.2.6 and new format 0.2.6 - [UNRELEASED]
-        if grep -q "## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]" CHANGELOG.md; then
-            sed -i "0,/## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$CURRENT_VERSION] - $CURRENT_DATE/" CHANGELOG.md
-        else
-            sed -i "0,/## \\[NEXT_VERSION\\]/ s/## \\[NEXT_VERSION\\].*$/## [$CURRENT_VERSION] - $CURRENT_DATE/" CHANGELOG.md
-        fi
-        echo "Updated NEXT_VERSION entry in CHANGELOG.md to [$CURRENT_VERSION] - $CURRENT_DATE."
-
-        # Commit the updated changelog.
-        git add CHANGELOG.md
-        gc "Update CHANGELOG.md for release $CURRENT_VERSION"
+        echo "CHANGELOG.md has a [NEXT_VERSION] entry at the top."
     else
         echo "WARNING: No [NEXT_VERSION] entry found at top of CHANGELOG.md"
         echo "   Top entry is: [$CHANGELOG_TOP_ENTRY]"
