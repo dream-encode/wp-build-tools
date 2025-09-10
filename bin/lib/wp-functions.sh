@@ -115,29 +115,53 @@ function wp_plugin_bump_version() {
     local PLUGIN_NAME="$(basename $PWD)"
     local FILENAME="$PLUGIN_NAME.php"
 
-    # Check if main plugin file exists
+    # Main plugin file.
     if [ ! -f "$FILENAME" ]; then
         echo "Warning: Main plugin file $FILENAME not found. Skipping PHP version update."
         return 0
     fi
 
-    # Update version in plugin header
+    # Plugin header.
     if grep -q "Version:" "$FILENAME"; then
         sed -i "s/Version:.*$/Version: $NEW_VERSION/" "$FILENAME"
         echo "Updated version in $FILENAME header."
     fi
 
-    # Update version constant if it exists
+    # Version constant.
     local PLUGIN_CONSTANT=$(echo "$PLUGIN_NAME" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+
     if grep -q "define.*${PLUGIN_CONSTANT}_VERSION" "$FILENAME"; then
         sed -i "s/define.*${PLUGIN_CONSTANT}_VERSION.*$/define( '${PLUGIN_CONSTANT}_VERSION', '$NEW_VERSION' );/" "$FILENAME"
         echo "Updated ${PLUGIN_CONSTANT}_VERSION constant in $FILENAME."
     fi
 
-    # Update block.json files (for block plugins/themes).
+    # Constants files.
+    local CONSTANTS_FILES=()
+
+    if [ -f "includes/${PLUGIN_NAME}-constants.php" ]; then
+        CONSTANTS_FILES+=("includes/${PLUGIN_NAME}-constants.php")
+    fi
+    if [ -f "inc/constants.php" ]; then
+        CONSTANTS_FILES+=("inc/constants.php")
+    fi
+
+    for CONSTANTS_FILE in "${CONSTANTS_FILES[@]}"; do
+        if [ -f "$CONSTANTS_FILE" ]; then
+            local PLUGIN_CONSTANT=$(echo "$PLUGIN_NAME" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+
+            if grep -q "define.*${PLUGIN_CONSTANT}_PLUGIN_VERSION" "$CONSTANTS_FILE"; then
+                sed -i "s/define.*${PLUGIN_CONSTANT}_PLUGIN_VERSION.*$/define( '${PLUGIN_CONSTANT}_PLUGIN_VERSION', '$NEW_VERSION' );/" "$CONSTANTS_FILE"
+                echo "Updated ${PLUGIN_CONSTANT}_PLUGIN_VERSION constant in $CONSTANTS_FILE."
+            fi
+        fi
+    done
+
+    # Block.json files.
     local BLOCK_JSON_FILES=$(find . -type f -name "block.json" -not -path "./node_modules/*" -not -path "./vendor/*")
+
     if [ -n "$BLOCK_JSON_FILES" ]; then
         echo "Updating version in block.json files..."
+
         while IFS= read -r BLOCK_FILE; do
             if [ -f "$BLOCK_FILE" ]; then
                 jq --arg v "$NEW_VERSION" '.version = $v' "$BLOCK_FILE" > "$BLOCK_FILE.tmp" && mv "$BLOCK_FILE.tmp" "$BLOCK_FILE"
