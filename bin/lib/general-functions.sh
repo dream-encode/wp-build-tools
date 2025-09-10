@@ -265,6 +265,7 @@ function package_version_bump_interactive() {
             --exclude="*.mp3" \
             --exclude="*.wav" \
             --exclude="*.lock" \
+            --exclude-dir="*release.sh" \
             2>/dev/null || true)
 
         if [ -n "$NEXT_VERSION_FILES" ]; then

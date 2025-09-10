@@ -1,11 +1,15 @@
 # Changelog
 
+## [0.2.6] - 2025-09-10
+* BUG: Fix placeholders.
+* BUG: Add constants file support.
+
 ## [0.2.5] - 2025-09-10
 * BUG: Don't replace version in .sh files.
 
 ## [0.2.4] - 2025-09-10
 * BUG: Use interactive version bumping.
-* BUG: Handle both old format 0.2.5 and new format 0.2.5 - [UNRELEASED]
+* BUG: Handle both old format of NEXT_VERSION replacement.
 
 ## [0.2.3] - 2025-09-09
 * BUG: Go up one more level.
