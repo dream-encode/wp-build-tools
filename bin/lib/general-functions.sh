@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# General utility functions for release script
-# Copied from general-functions.bashrc
+# General utility functions for release script.
+# Copied from general-functions.bashrc.
 
-# Color helper function for better terminal compatibility
+# Color helper function for better terminal compatibility.
 function print_color() {
     local color_code="$1"
     local message="$2"
@@ -14,7 +14,7 @@ function print_color() {
     fi
 }
 
-# Confirmation prompt function
+# Confirmation prompt function.
 function confirm() {
     local message="$1"
     local response
@@ -29,7 +29,7 @@ function confirm() {
     done
 }
 
-# File existence check
+# File existence check.
 function file_exists() {
     local file_path="$1"
 
@@ -40,7 +40,7 @@ function file_exists() {
     return 0
 }
 
-# Extract version updates from changelog for a specific version
+# Extract version updates from changelog for a specific version.
 function extract_version_updates_from_changelog() {
     local RELEASE_VERSION="$1"
     local CHANGELOG_FILE="CHANGELOG.md"
@@ -50,28 +50,28 @@ function extract_version_updates_from_changelog() {
         return 1
     fi
 
-    # Parse CHANGELOG.md for changes in version (supports both X.X.X and X.X.X.X formats)
+    # Parse CHANGELOG.md for changes in version (supports both X.X.X and X.X.X.X formats).
     awk -v ver="$RELEASE_VERSION" '
         $0 ~ "^## \\[" ver "\\]" { print; version_found=1; next }
         /^## \[/ && version_found { exit }
         version_found && /^\*/' "$CHANGELOG_FILE"
 }
 
-# Check if changelog exists
+# Check if changelog exists.
 function changelog_exists() {
     if file_exists "CHANGELOG.md"; then
-        return 0  # Changelog exists
+        return 0
     else
-        return 1  # Changelog does not exist
+        return 1
     fi
 }
 
-# Check if package.json exists
+# Check if package.json exists.
 function package_json_exists() {
     return file_exists "package.json"
 }
 
-# Get version from package.json
+# Get version from package.json.
 function get_version_package_json() {
     if ! command -v jq >/dev/null 2>&1; then
         echo "Error: jq is required but not installed." >&2
@@ -81,7 +81,7 @@ function get_version_package_json() {
     echo "$(jq -r .version package.json)"
 }
 
-# Update version in package.json
+# Update version in package.json.
 function bump_version_package_json() {
     local VERSION="$1"
 
@@ -94,7 +94,7 @@ function bump_version_package_json() {
     mv /tmp/package.json package.json
 }
 
-# Get package manager for project (yarn or npm)
+# Get package manager for project (yarn or npm).
 function get_package_manager_for_project() {
     if [ -f yarn.lock ]; then
         echo "yarn"
@@ -103,7 +103,7 @@ function get_package_manager_for_project() {
     fi
 }
 
-# Check if current directory has production script
+# Check if current directory has production script.
 function current_dir_has_production_script() {
     if ! command -v jq >/dev/null 2>&1; then
         echo "Error: jq is required but not installed." >&2
@@ -121,7 +121,7 @@ function current_dir_has_production_script() {
     return 1
 }
 
-# Check if current directory has build script
+# Check if current directory has build script.
 function current_dir_has_build_script() {
     if ! command -v jq >/dev/null 2>&1; then
         echo "Error: jq is required but not installed." >&2
@@ -139,7 +139,7 @@ function current_dir_has_build_script() {
     return 1
 }
 
-# Check if release workflow exists
+# Check if release workflow exists.
 function release_workflow_exists() {
     if [ -f .github/workflows/release.yml ] || [ -f .github/workflows/release.yaml ]; then
         return 0
@@ -152,7 +152,7 @@ function release_workflow_exists() {
     return 1
 }
 
-# Interactive version bump with type selection
+# Interactive version bump with type selection.
 function package_version_bump_interactive() {
     local CURRENT_DIR=$(pwd)
     local CURRENT_DIR_BASENAME=$(basename "$CURRENT_DIR")
@@ -194,14 +194,14 @@ function package_version_bump_interactive() {
 
     local NEW_VERSION
     if [ "$bump_type" = "custom" ]; then
-        # Custom version input
+        # Custom version input.
         read -e -p "Enter custom version: " -i "$CURRENT_VERSION" NEW_VERSION
         if [ -z "$NEW_VERSION" ]; then
             echo "No version supplied. Exiting!"
             exit 1
         fi
     else
-        # Calculate new version based on bump type
+        # Calculate new version based on bump type.
         NEW_VERSION=$(calculate_new_version "$CURRENT_VERSION" "$bump_type")
     fi
 
@@ -213,18 +213,18 @@ function package_version_bump_interactive() {
         exit 1
     fi
 
-    # Update package.json
+    # Update package.json.
     bump_version_package_json "$NEW_VERSION"
     echo "Updated version in package.json."
 
-    # Update composer.json if it exists
+    # Update composer.json if it exists.
     local COMPOSER_JSON_FILENAME='composer.json'
     if [ -f "$COMPOSER_JSON_FILENAME" ]; then
         jq ".version = \"$NEW_VERSION\"" composer.json > composer.json.tmp && mv composer.json.tmp composer.json
         echo "Updated version in $COMPOSER_JSON_FILENAME."
     fi
 
-    # Update block.json files (for block plugins/themes)
+    # Update block.json files (for block plugins/themes).
     local BLOCK_JSON_FILES=$(find . -type f -name "block.json" -not -path "./node_modules/*" -not -path "./vendor/*")
     if [ -n "$BLOCK_JSON_FILES" ]; then
         echo "Updating version in block.json files..."
@@ -236,12 +236,12 @@ function package_version_bump_interactive() {
         done <<< "$BLOCK_JSON_FILES"
     fi
 
-    # Update WordPress plugin/theme main file
+    # Update WordPress plugin/theme main file.
     if [ "$IS_WP_PLUGIN" = true ] || [ "$IS_WP_THEME" = true ]; then
         wp_plugin_bump_version "$NEW_VERSION"
     fi
 
-    # Update public/manifest.json if it exists
+    # Update public/manifest.json if it exists.
     local MANIFEST_JSON_FILENAME='public/manifest.json'
 
     if [ -f "$MANIFEST_JSON_FILENAME" ]; then
@@ -249,11 +249,11 @@ function package_version_bump_interactive() {
         echo "Updated version in $MANIFEST_JSON_FILENAME."
     fi
 
-    # Replace [NEXT_VERSION] placeholders in all files
+    # Replace [NEXT_VERSION] placeholders in all files.
     echo "Searching for [NEXT_VERSION] placeholders to replace with $NEW_VERSION..."
     local NEXT_VERSION_FILES
 
-    # Find all files containing [NEXT_VERSION] (excluding binary files, node_modules, vendor, .git)
+    # Find all files containing [NEXT_VERSION] (excluding binary files, node_modules, vendor, .git).
     if command -v grep >/dev/null 2>&1; then
         NEXT_VERSION_FILES=$(grep -r -l "\[NEXT_VERSION\]" . \
             --exclude-dir=node_modules \
@@ -286,10 +286,10 @@ function package_version_bump_interactive() {
             done
             echo ""
 
-            # Replace [NEXT_VERSION] with the actual version in each file
+            # Replace [NEXT_VERSION] with the actual version in each file.
             echo "$NEXT_VERSION_FILES" | while IFS= read -r file; do
                 if [ -f "$file" ]; then
-                    # Use sed to replace [NEXT_VERSION] with the new version
+                    # Use sed to replace [NEXT_VERSION] with the new version.
                     if command -v sed >/dev/null 2>&1; then
                         sed -i "s/\[NEXT_VERSION\]/$NEW_VERSION/g" "$file"
                         echo "Updated [NEXT_VERSION] → $NEW_VERSION in $file"
@@ -303,14 +303,14 @@ function package_version_bump_interactive() {
         echo "grep command not available, skipping [NEXT_VERSION] replacement."
     fi
 
-    # Commit changes
+    # Commit changes.
     git add .
     gc "Version $NEW_VERSION bump."
 
     echo "Version bump to $NEW_VERSION complete."
 }
 
-# Calculate new version based on bump type
+# Calculate new version based on bump type.
 function calculate_new_version() {
     local current_version="$1"
     local bump_type="$2"
@@ -358,6 +358,7 @@ function calculate_new_version() {
     fi
 }
 
+# Calculate new version based on bump type.
 function package_version_bump_auto() {
     local bump_type="$1"
     local current_version=$(get_version_package_json)
@@ -366,14 +367,11 @@ function package_version_bump_auto() {
 
     echo "Auto-bumping version from $current_version to $new_version ($bump_type)"
 
-    # Update package.json
+    # Update package.json.
     bump_version_package_json "$new_version"
     echo "Updated version in package.json."
 
-    # Update other files (same logic as interactive version)
-    # ... (rest of the version update logic would go here)
-
-    # Commit changes
+    # Commit changes.
     git add .
     gc "Version $new_version bump."
 

@@ -249,3 +249,30 @@ function version_lt() {
         return 1
     fi
 }
+
+# Post-release cleanup: merge release branch to main and return to original branch.
+function git_post_create_release() {
+    local current_version="$1"
+    local original_branch="$2"
+
+    echo ">> Post-release cleanup..."
+
+    # Switch to main branch.
+    echo "Switching to main branch..."
+    git checkout main
+
+    # Merge the release branch.
+    echo "Merging release/$current_version into main..."
+    git merge "release/$current_version" --no-ff -m "Merge release/$current_version into main"
+
+    # Push main branch.
+    echo "Pushing main branch..."
+    git push origin main
+
+    # Return to original branch.
+    echo "Returning to original branch: $original_branch"
+    git checkout "$original_branch"
+
+    echo "✅ Post-release cleanup completed."
+}
+
