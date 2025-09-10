@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_RELEASE] - 2025-09-09
+## [NEXT_VERSION] - 2025-09-09
 * BUG: Go up one more level.
 
 ## [0.2.2] - 2025-09-09
