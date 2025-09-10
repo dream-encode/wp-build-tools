@@ -1,8 +1,11 @@
 # Changelog
 
+## [0.2.5] - 2025-09-10
+* BUG: Don't replace version in .sh files.
+
 ## [0.2.4] - 2025-09-10
 * BUG: Use interactive version bumping.
-* BUG: Handle both old format 0.2.4 and new format 0.2.4 - [UNRELEASED]
+* BUG: Handle both old format 0.2.5 and new format 0.2.5 - [UNRELEASED]
 
 ## [0.2.3] - 2025-09-09
 * BUG: Go up one more level.
