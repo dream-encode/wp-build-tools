@@ -156,12 +156,12 @@ if changelog_exists; then
         git add CHANGELOG.md
         gc "Update CHANGELOG.md for release $CURRENT_VERSION"
     else
-        echo "WARNING: No 0.2.6 entry found at top of CHANGELOG.md"
+        echo "WARNING: No [NEXT_VERSION] entry found at top of CHANGELOG.md"
         echo "   Top entry is: [$CHANGELOG_TOP_ENTRY]"
-        echo "   Expected: 0.2.6 or 0.2.6 - [UNRELEASED]"
+        echo "   Expected: [NEXT_VERSION] or [NEXT_VERSION] - [UNRELEASED]"
 
         if ! confirm "Continue without updating changelog?"; then
-            echo "Release cancelled. Please add a 0.2.6 entry to CHANGELOG.md"
+            echo "Release cancelled. Please add a [NEXT_VERSION] entry to CHANGELOG.md"
             return 1
         fi
     fi

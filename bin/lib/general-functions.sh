@@ -224,17 +224,17 @@ function package_version_bump_interactive() {
         echo "Updated version in $COMPOSER_JSON_FILENAME."
     fi
 
-    # Update WordPress plugin/theme main file.
-    if [ "$IS_WP_PLUGIN" = true ] || [ "$IS_WP_THEME" = true ]; then
-        wp_plugin_bump_version "$NEW_VERSION"
-    fi
-
     # Update public/manifest.json if it exists.
     local MANIFEST_JSON_FILENAME='public/manifest.json'
 
     if [ -f "$MANIFEST_JSON_FILENAME" ]; then
         jq ".version = \"$NEW_VERSION\"" $MANIFEST_JSON_FILENAME > $MANIFEST_JSON_FILENAME.tmp && mv $MANIFEST_JSON_FILENAME.tmp $MANIFEST_JSON_FILENAME
         echo "Updated version in $MANIFEST_JSON_FILENAME."
+    fi
+
+    # Update WordPress plugin/theme main file.
+    if [ "$IS_WP_PLUGIN" = true ] || [ "$IS_WP_THEME" = true ]; then
+        wp_plugin_bump_version "$NEW_VERSION"
     fi
 
     # Replace 0.1.1 placeholders in all files.
@@ -265,7 +265,7 @@ function package_version_bump_interactive() {
             --exclude="*.mp3" \
             --exclude="*.wav" \
             --exclude="*.lock" \
-            --exclude-dir="*release.sh" \
+            --exclude="*release.sh" \
             2>/dev/null || true)
 
         if [ -n "$NEXT_VERSION_FILES" ]; then
