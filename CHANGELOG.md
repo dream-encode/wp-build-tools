@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.2.5] - 2025-09-10
 * BUG: Don't replace version in .sh files.
 
 ## [0.2.4] - 2025-09-10
