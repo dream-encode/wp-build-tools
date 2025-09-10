@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.2.7] - 2025-09-10
 * BUG: FIx .sh files exclusion.
 
 ## [0.2.6] - 2025-09-10
