@@ -2,6 +2,7 @@
 
 ## [NEXT_VERSION] - [UNRELEASED]
 * BUG: Use interactive version bumping.
+* BUG: Handle both old format [NEXT_VERSION] and new format [NEXT_VERSION] - [UNRELEASED]
 
 ## [0.2.3] - 2025-09-09
 * BUG: Go up one more level.
