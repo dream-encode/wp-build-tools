@@ -25,8 +25,19 @@ source "$SCRIPT_DIR/lib/general-functions.sh"
 source "$SCRIPT_DIR/lib/git-functions.sh"
 source "$SCRIPT_DIR/lib/wp-functions.sh"
 
-# Change to project root.
+# Change to project root - but if we're in node_modules, use the actual project root.
 cd "$PROJECT_ROOT"
+
+# If we're in a node_modules directory, find the actual project root.
+if [[ "$PWD" == */node_modules/* ]]; then
+    ACTUAL_PROJECT_ROOT="$PWD"
+
+    while [[ "$ACTUAL_PROJECT_ROOT" == */node_modules/* ]]; do
+        ACTUAL_PROJECT_ROOT="$(dirname "$ACTUAL_PROJECT_ROOT")"
+    done
+
+    cd "$ACTUAL_PROJECT_ROOT"
+fi
 
 # Set some vars.
 CURRENT_DIR=$(pwd)
@@ -297,6 +308,8 @@ fi
 echo ""
 echo "SUCCESS: Release process completed successfully!"
 echo "GitHub Release: https://github.com/$(git config --get remote.origin.url | sed 's/.*github.com[:/]\([^.]*\).*/\1/')/releases/tag/v$CURRENT_VERSION"
+
+
 
 
 
