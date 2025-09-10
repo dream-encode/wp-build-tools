@@ -4,7 +4,7 @@
 * Bump version.
 
 ## [0.1.1] - 2025-09-08
-* Test next release.
+* More abstraction.
 
 ## [0.1.0] - 2025-09-08
 * Initial release.
