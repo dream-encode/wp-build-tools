@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Use interactive version bumping.
+
 ## [0.2.3] - 2025-09-09
 * BUG: Go up one more level.
 
