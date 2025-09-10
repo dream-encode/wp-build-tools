@@ -2,6 +2,7 @@
 
 ## [NEXT_VERSION] - [UNRELEASED]
 * BUG: Fix placeholders.
+* BUG: Add constants file support.
 
 ## [0.2.5] - 2025-09-10
 * BUG: Don't replace version in .sh files.
