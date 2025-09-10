@@ -152,6 +152,62 @@ function release_workflow_exists() {
     return 1
 }
 
+# Interactive menu selection with cursor support
+function interactive_menu_select() {
+    local prompt="$1"
+    shift
+    local options=("$@")
+
+    # Try fzf first (modern, best UX)
+    if command -v fzf >/dev/null 2>&1; then
+        echo "$prompt" >&2
+        local result=$(printf '%s\n' "${options[@]}" | fzf --height=10 --layout=reverse --border --prompt="Select: " 2>/dev/null)
+        local fzf_exit=$?
+        if [ $fzf_exit -eq 0 ] && [ -n "$result" ]; then
+            echo "$result"
+            return 0
+        else
+            return 1
+        fi
+    fi
+
+    # Try whiptail (good TUI)
+    if command -v whiptail >/dev/null 2>&1; then
+        local menu_items=()
+        for i in "${!options[@]}"; do
+            menu_items+=("$((i+1))" "${options[i]}")
+        done
+
+        local choice=$(whiptail --title "Version Bump" --menu "$prompt" 15 80 5 "${menu_items[@]}" 3>&1 1>&2 2>&3)
+        local whiptail_exit=$?
+        if [ $whiptail_exit -eq 0 ] && [ -n "$choice" ]; then
+            echo "${options[$((choice-1))]}"
+            return 0
+        else
+            return 1
+        fi
+    fi
+
+    # Fallback to numbered menu (most compatible)
+    echo "$prompt" >&2
+    echo "" >&2
+    for i in "${!options[@]}"; do
+        echo "  $((i+1))) ${options[i]}" >&2
+    done
+    echo "" >&2
+
+    while true; do
+        read -p "Enter your choice (1-${#options[@]}): " choice >&2
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#options[@]}" ]; then
+            local selected_option="${options[$((choice-1))]}"
+            echo "$selected_option"
+            return 0
+        else
+            echo "Invalid choice. Please enter a number between 1 and ${#options[@]}." >&2
+        fi
+    done
+}
+
 # Interactive version bump with type selection.
 function package_version_bump_interactive() {
     local CURRENT_DIR=$(pwd)
@@ -171,37 +227,38 @@ function package_version_bump_interactive() {
 
     echo "Current package version is $CURRENT_VERSION"
     echo ""
-    echo "Select version bump type:"
-    echo "  1) patch   - Bug fixes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "patch"))"
-    echo "  2) minor   - New features (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "minor"))"
-    echo "  3) major   - Breaking changes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "major"))"
-    echo "  4) hotfix  - Critical fixes, adds 4th segment (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "hotfix"))"
-    echo "  5) custom  - Enter custom version"
-    echo ""
 
-    local choice
-    while true; do
-        read -p "Enter your choice (1-5): " choice
-        case $choice in
-            1) local bump_type="patch"; break;;
-            2) local bump_type="minor"; break;;
-            3) local bump_type="major"; break;;
-            4) local bump_type="hotfix"; break;;
-            5) local bump_type="custom"; break;;
-            *) echo "Invalid choice. Please enter 1-5.";;
-        esac
-    done
+    # Create menu options with version previews
+    local options=(
+        "major - Breaking changes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "major"))"
+        "minor - New features (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "minor"))"
+        "patch - Bug fixes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "patch"))"
+        "hotfix - Critical fixes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "hotfix"))"
+        "custom - Enter custom version"
+    )
+
+    # Use interactive menu
+    local selected=$(interactive_menu_select "Select version bump type:" "${options[@]}")
+    local menu_exit_code=$?
+
+    if [ $menu_exit_code -ne 0 ] || [ -z "$selected" ]; then
+        echo "Version bump cancelled."
+        return 1
+    fi
+
+    # Extract bump type from selection
+    local bump_type=$(echo "$selected" | cut -d' ' -f1)
 
     local NEW_VERSION
     if [ "$bump_type" = "custom" ]; then
-        # Custom version input.
+        # Custom version input
         read -e -p "Enter custom version: " -i "$CURRENT_VERSION" NEW_VERSION
         if [ -z "$NEW_VERSION" ]; then
             echo "No version supplied. Exiting!"
-            exit 1
+            return 1
         fi
     else
-        # Calculate new version based on bump type.
+        # Calculate new version based on bump type
         NEW_VERSION=$(calculate_new_version "$CURRENT_VERSION" "$bump_type")
     fi
 
@@ -226,15 +283,15 @@ function package_version_bump_interactive() {
 
             # Handle both old format 0.2.6 and new format 0.2.6 - [UNRELEASED]
             if grep -q "## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]" CHANGELOG.md; then
-                sed -i "0,/## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$CURRENT_VERSION] - $CURRENT_DATE/" CHANGELOG.md
+                sed -i "0,/## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$NEW_VERSION] - $CURRENT_DATE/" CHANGELOG.md
             else
-                sed -i "0,/## \\[NEXT_VERSION\\]/ s/## \\[NEXT_VERSION\\].*$/## [$CURRENT_VERSION] - $CURRENT_DATE/" CHANGELOG.md
+                sed -i "0,/## \\[NEXT_VERSION\\]/ s/## \\[NEXT_VERSION\\].*$/## [$NEW_VERSION] - $CURRENT_DATE/" CHANGELOG.md
             fi
-            echo "Updated NEXT_VERSION entry in CHANGELOG.md to [$CURRENT_VERSION] - $CURRENT_DATE."
+            echo "Updated NEXT_VERSION entry in CHANGELOG.md to [$NEW_VERSION] - $CURRENT_DATE."
 
             # Commit the updated changelog.
             git add CHANGELOG.md
-            gc "Update CHANGELOG.md for release $CURRENT_VERSION"
+            gc "Update CHANGELOG.md for release $NEW_VERSION"
         fi
     fi
 
