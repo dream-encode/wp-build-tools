@@ -189,7 +189,7 @@ if changelog_exists; then
         # Update NEXT_VERSION entry with version and current date.
         CURRENT_DATE=$(date +%Y-%m-%d)
 
-        sed -i "0,/## \[NEXT_VERSION\]/ s/## \[NEXT_VERSION\]/## [$CURRENT_VERSION] - $CURRENT_DATE/" CHANGELOG.md
+        sed -i "0,/## \\[NEXT_VERSION\\]/ s/## \\[NEXT_VERSION\\].*$/## [$CURRENT_VERSION] - $CURRENT_DATE/" CHANGELOG.md
         echo "Updated NEXT_VERSION entry in CHANGELOG.md to [$CURRENT_VERSION] - $CURRENT_DATE."
 
         # Commit the updated changelog.
