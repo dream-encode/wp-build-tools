@@ -138,13 +138,13 @@ if changelog_exists; then
     echo ">> Processing changelog..."
 
     # Check if there's a NEXT_VERSION entry at the top.
-    CHANGELOG_TOP_ENTRY=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[(.*)\].*/\1/')
+    CHANGELOG_TOP_ENTRY=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[([^]]*)\].*/\1/')
 
     if [ "$CHANGELOG_TOP_ENTRY" = "NEXT_VERSION" ]; then
         # Update NEXT_VERSION entry with version and current date.
         CURRENT_DATE=$(date +%Y-%m-%d)
 
-        # Handle both old format 0.2.4 and new format 0.2.4 - [UNRELEASED]
+        # Handle both old format 0.2.5 and new format 0.2.5 - [UNRELEASED]
         if grep -q "## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]" CHANGELOG.md; then
             sed -i "0,/## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$CURRENT_VERSION] - $CURRENT_DATE/" CHANGELOG.md
         else
@@ -156,13 +156,13 @@ if changelog_exists; then
         git add CHANGELOG.md
         gc "Update CHANGELOG.md for release $CURRENT_VERSION"
     else
-        echo "WARNING: No 0.2.4 entry found at top of CHANGELOG.md"
+        echo "WARNING: No 0.2.5 entry found at top of CHANGELOG.md"
         echo "   Top entry is: [$CHANGELOG_TOP_ENTRY]"
-        echo "   Expected: 0.2.4"
+        echo "   Expected: 0.2.5 or 0.2.5 - [UNRELEASED]"
 
         if ! confirm "Continue without updating changelog?"; then
-            echo "Release cancelled. Please add a 0.2.4 entry to CHANGELOG.md"
-            exit 1
+            echo "Release cancelled. Please add a 0.2.5 entry to CHANGELOG.md"
+            return 1
         fi
     fi
 fi
