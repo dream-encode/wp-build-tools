@@ -133,6 +133,18 @@ function wp_plugin_bump_version() {
         sed -i "s/define.*${PLUGIN_CONSTANT}_VERSION.*$/define( '${PLUGIN_CONSTANT}_VERSION', '$NEW_VERSION' );/" "$FILENAME"
         echo "Updated ${PLUGIN_CONSTANT}_VERSION constant in $FILENAME."
     fi
+
+    # Update block.json files (for block plugins/themes).
+    local BLOCK_JSON_FILES=$(find . -type f -name "block.json" -not -path "./node_modules/*" -not -path "./vendor/*")
+    if [ -n "$BLOCK_JSON_FILES" ]; then
+        echo "Updating version in block.json files..."
+        while IFS= read -r BLOCK_FILE; do
+            if [ -f "$BLOCK_FILE" ]; then
+                jq --arg v "$NEW_VERSION" '.version = $v' "$BLOCK_FILE" > "$BLOCK_FILE.tmp" && mv "$BLOCK_FILE.tmp" "$BLOCK_FILE"
+                echo "Updated version in $BLOCK_FILE."
+            fi
+        done <<< "$BLOCK_JSON_FILES"
+    fi
 }
 
 # Create ZIP file for WordPress plugin (Windows-compatible version)
