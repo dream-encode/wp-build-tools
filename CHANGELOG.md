@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.2.3] - 2025-09-09
+* BUG: Go up one more level.
+
 ## [0.2.2] - 2025-09-09
 * BUG: Distinguish between the script root and the project root.
 * BUG: cd to the project root before running the script.

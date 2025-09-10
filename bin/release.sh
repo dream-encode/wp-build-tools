@@ -36,6 +36,9 @@ if [[ "$PWD" == */node_modules/* ]]; then
         ACTUAL_PROJECT_ROOT="$(dirname "$ACTUAL_PROJECT_ROOT")"
     done
 
+    # Go up one more level to get out of the node_modules directory itself
+    ACTUAL_PROJECT_ROOT="$(dirname "$ACTUAL_PROJECT_ROOT")"
+
     cd "$ACTUAL_PROJECT_ROOT"
 fi
 
@@ -308,6 +311,7 @@ fi
 echo ""
 echo "SUCCESS: Release process completed successfully!"
 echo "GitHub Release: https://github.com/$(git config --get remote.origin.url | sed 's/.*github.com[:/]\([^.]*\).*/\1/')/releases/tag/v$CURRENT_VERSION"
+
 
 
 
