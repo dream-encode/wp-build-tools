@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - 2025-09-09
+## [0.2.2] - 2025-09-09
 * BUG: Distinguish between the script root and the project root.
 * BUG: cd to the project root before running the script.
 
