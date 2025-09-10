@@ -59,8 +59,8 @@ yarn release
    - Updates POT files using WP-CLI (if available)
 
 5. **Changelog management**
-   - Looks for "[NEXT_VERSION]" entry at top of CHANGELOG.md
-   - Replaces "[NEXT_VERSION]" with "[X.X.X.X] - YYYY-MM-DD" format
+   - Looks for "0.1.1" entry at top of CHANGELOG.md
+   - Replaces "0.1.1" with "[X.X.X.X] - YYYY-MM-DD" format
 
 6. **Git operations**
    - Commits version bump changes
@@ -90,10 +90,10 @@ To enable ZIP asset creation, add this line to your main plugin file header:
 
 ### Changelog Format
 
-The script expects a `CHANGELOG.md` file in Keep a Changelog format with an "[NEXT_VERSION]" entry at the top:
+The script expects a `CHANGELOG.md` file in Keep a Changelog format with an "0.1.1" entry at the top:
 
 ```markdown
-## [NEXT_VERSION]
+## 0.1.1
 
 * Added new feature
 * Fixed bug
@@ -103,7 +103,7 @@ The script expects a `CHANGELOG.md` file in Keep a Changelog format with an "[NE
 * Initial release
 ```
 
-During release, "[NEXT_VERSION]" will be automatically replaced with the version and date:
+During release, "0.1.1" will be automatically replaced with the version and date:
 
 ```markdown
 ## [1.1.0] - 2024-01-20
