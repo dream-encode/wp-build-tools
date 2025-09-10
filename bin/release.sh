@@ -133,6 +133,40 @@ fi
 # Version bump.
 echo ">> Version management:"
 
+# Check if a changelog exists.
+if changelog_exists; then
+    echo ">> Processing changelog..."
+
+    # Check if there's a NEXT_VERSION entry at the top.
+    CHANGELOG_TOP_ENTRY=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[(.*)\].*/\1/')
+
+    if [ "$CHANGELOG_TOP_ENTRY" = "NEXT_VERSION" ]; then
+        # Update NEXT_VERSION entry with version and current date.
+        CURRENT_DATE=$(date +%Y-%m-%d)
+
+        # Handle both old format 0.2.4 and new format 0.2.4 - [UNRELEASED]
+        if grep -q "## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]" CHANGELOG.md; then
+            sed -i "0,/## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$CURRENT_VERSION] - $CURRENT_DATE/" CHANGELOG.md
+        else
+            sed -i "0,/## \\[NEXT_VERSION\\]/ s/## \\[NEXT_VERSION\\].*$/## [$CURRENT_VERSION] - $CURRENT_DATE/" CHANGELOG.md
+        fi
+        echo "Updated NEXT_VERSION entry in CHANGELOG.md to [$CURRENT_VERSION] - $CURRENT_DATE."
+
+        # Commit the updated changelog.
+        git add CHANGELOG.md
+        gc "Update CHANGELOG.md for release $CURRENT_VERSION"
+    else
+        echo "WARNING: No 0.2.4 entry found at top of CHANGELOG.md"
+        echo "   Top entry is: [$CHANGELOG_TOP_ENTRY]"
+        echo "   Expected: 0.2.4"
+
+        if ! confirm "Continue without updating changelog?"; then
+            echo "Release cancelled. Please add a 0.2.4 entry to CHANGELOG.md"
+            exit 1
+        fi
+    fi
+fi
+
 # Handle version bump - either from command line argument or interactive.
 if [ ! -z "$1" ]; then
     # Command line argument provided (patch, minor, major, hotfix).
@@ -150,39 +184,7 @@ if [ ! -z "$1" ]; then
 else
     # Interactive mode - ask if they want to bump version.
     if confirm "Current version in package.json is $CURRENT_VERSION. Do you want to bump the version now?"; then
-        echo ""
-        echo "Select version bump type:"
-
-        bump_options=(
-            "major   - Breaking changes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "major"))"
-            "minor   - New features (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "minor"))"
-            "patch   - Bug fixes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "patch"))"
-            "hotfix  - Critical fixes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "hotfix"))"
-            "custom  - Enter custom version"
-            "skip    - Keep current version"
-        )
-
-        PS3="Choose an option (1-6): "
-        COLUMNS=1
-        select choice in "${bump_options[@]}"; do
-            case $REPLY in
-                3) package_version_bump_auto "major"; break;;
-                2) package_version_bump_auto "minor"; break;;
-                1) package_version_bump_auto "patch"; break;;
-                4) package_version_bump_auto "hotfix"; break;;
-                5)
-                    read -e -p "Enter custom version: " -i "$CURRENT_VERSION" NEW_VERSION
-                    if [ -z "$NEW_VERSION" ]; then
-                        echo "No version supplied. Keeping current version."
-                    else
-                        bump_version_package_json "$NEW_VERSION"
-                        echo "Updated version to $NEW_VERSION."
-                    fi
-                    break;;
-                6) echo "Keeping current version $CURRENT_VERSION."; break;;
-                *) echo "Invalid option. Please select 1-6.";;
-            esac
-        done
+        package_version_bump_interactive
     else
         echo "Staying at version $CURRENT_VERSION."
     fi
@@ -190,36 +192,6 @@ fi
 
 # Refresh the version, as it may have changed.
 CURRENT_VERSION=$(get_version_package_json)
-echo ">> Release version: $CURRENT_VERSION"
-
-# Check if a changelog exists.
-if changelog_exists; then
-    echo ">> Processing changelog..."
-
-    # Check if there's a NEXT_VERSION entry at the top.
-    CHANGELOG_TOP_ENTRY=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[(.*)\].*/\1/')
-
-    if [ "$CHANGELOG_TOP_ENTRY" = "NEXT_VERSION" ]; then
-        # Update NEXT_VERSION entry with version and current date.
-        CURRENT_DATE=$(date +%Y-%m-%d)
-
-        sed -i "0,/## \\[NEXT_VERSION\\]/ s/## \\[NEXT_VERSION\\].*$/## [$CURRENT_VERSION] - $CURRENT_DATE/" CHANGELOG.md
-        echo "Updated NEXT_VERSION entry in CHANGELOG.md to [$CURRENT_VERSION] - $CURRENT_DATE."
-
-        # Commit the updated changelog.
-        git add CHANGELOG.md
-        gc "Update CHANGELOG.md for release $CURRENT_VERSION"
-    else
-        echo "WARNING: No 0.1.1 entry found at top of CHANGELOG.md"
-        echo "   Top entry is: [$CHANGELOG_TOP_ENTRY]"
-        echo "   Expected: 0.1.1"
-
-        if ! confirm "Continue without updating changelog?"; then
-            echo "Release cancelled. Please add a 0.1.1 entry to CHANGELOG.md"
-            exit 1
-        fi
-    fi
-fi
 
 echo ">> Pushing latest code to $CURRENT_BRANCH..."
 gpu

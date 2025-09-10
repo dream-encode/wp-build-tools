@@ -273,6 +273,13 @@ function git_post_create_release() {
     echo "Returning to original branch: $original_branch"
     git checkout "$original_branch"
 
+    # Add template changelog entry if changelog file exists.
+    if changelog_exists; then
+        echo "Adding template changelog entry..."
+        sed -i "s/## \[$current_version\]/## 0.2.4 - [UNRELEASED]\n* BUG: Example fix description.\n\n## [$current_version]/" "CHANGELOG.md"
+        echo "✅ Template changelog entry added to CHANGELOG.md"
+    fi
+
     echo "✅ Post-release cleanup completed."
 }
 
