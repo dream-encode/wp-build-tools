@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.2.4] - 2025-09-10
 * BUG: Use interactive version bumping.
 * BUG: Handle both old format [NEXT_VERSION] and new format [NEXT_VERSION] - [UNRELEASED]
 
