@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.3.0] - 2025-09-10
 * ENH: Try interactive_menu_select function.
 

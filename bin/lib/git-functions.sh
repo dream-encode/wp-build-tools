@@ -10,7 +10,7 @@ function gc() {
 
 # Git push
 function gpu() {
-    git push
+    git push -q
 }
 
 # Create and push git tag for release
@@ -20,7 +20,7 @@ function git_tag_release() {
         return 1
     else
         git tag -a "v$1" -m "Version $1"
-        git push -u origin "v$1"
+        git push -q -u origin "v$1"
     fi
 }
 
@@ -36,7 +36,7 @@ function git_delete_tag() {
         return 1
     else
         git tag -d "v$tag"
-        git push --delete origin "v$tag"
+        git push -q --delete origin "v$tag"
     fi
 }
 
@@ -85,6 +85,18 @@ function check_gh_cli() {
     fi
 
     return 0
+}
+
+function github_actions_github_actions_release_workflow_exists() {
+    # Consider common release workflow names
+    if [ -f .github/workflows/release.yml ] || [ -f .github/workflows/release.yaml ]; then
+        return 0
+    fi
+    # Also match common alternate naming patterns
+    if ls .github/workflows/release-*.yml >/dev/null 2>&1 || ls .github/workflows/release-*.yaml >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
 }
 
 # Validate git setup before release
@@ -192,9 +204,9 @@ function git_create_rerelease() {
     local CURRENT_VERSION=$(get_version_package_json)
 
     git tag -d "v$CURRENT_VERSION"
-    git push --delete origin "v$CURRENT_VERSION"
+    git push -q --delete origin "v$CURRENT_VERSION"
     gh release delete "v$CURRENT_VERSION" --cleanup-tag
-    git push
+    git push -q
 }
 
 # Delete a specific release
@@ -233,21 +245,363 @@ function get_commit_for_tag() {
     git rev-list -n 1 "$tag" 2>/dev/null
 }
 
-# Compare two versions (returns 0 if v1 < v2, 1 if v1 >= v2)
-function version_lt() {
-    local v1="$1"
-    local v2="$2"
+function git_create_rerelease() {
+    CURRENT_VERSION=$(get_version_package_json)
 
-    # Remove 'v' prefix if present
-    v1=${v1#v}
-    v2=${v2#v}
+    git tag -d "v$CURRENT_VERSION"
+    git push -q --delete origin "v$CURRENT_VERSION"
+    gh release delete "v$CURRENT_VERSION" --cleanup-tag
+    git push -q
+}
 
-    # Use sort -V for version comparison
-    if [ "$(printf '%s\n' "$v1" "$v2" | sort -V | head -n1)" = "$v1" ] && [ "$v1" != "$v2" ]; then
-        return 0
+function git_delete_release() {
+    read -p "Version: " version
+    if [ -z "$version" ]
+    then
+        echo "No version supplied.  Exiting!"
+        return
     else
-        return 1
+        git tag -d "v$version"
+        gh release delete "v$version" --cleanup-tag
     fi
+}
+
+function git_sync_upstream() {
+    git checkout trunk
+    git fetch upstream
+    git merge upstream/trunk
+}
+
+# Core git release function - handles generic git/GitHub release workflow
+function git_create_release() {
+    # Set some vars
+    local CURRENT_DIR=$(pwd)
+    local BASENAME=$(basename "$CURRENT_DIR")
+    local PACKAGE_MANAGER=$(get_package_manager_for_project)
+    local CURRENT_VERSION=$(get_version_package_json)
+
+    CURRENT_BRANCH=$(git branch --show-current)
+
+    # Check if we're on an allowed release branch.
+    if [ "$CURRENT_BRANCH" != "development" ] && [ "$CURRENT_BRANCH" != "hotfix" ]; then
+        echo "❌ Error: Releases can only be created from 'development' or 'hotfix' branches."
+        echo "   Current branch: $CURRENT_BRANCH"
+        echo "   Please switch to 'development' or 'hotfix' branch before releasing."
+        exit 1
+    fi
+
+    echo "🚀 Starting release process for $BASENAME"
+    echo "📦 Package manager: $PACKAGE_MANAGER"
+    echo "📋 Current version: $CURRENT_VERSION"
+    echo ""
+
+    # Version bump.
+    echo ">> Version management:"
+
+    # Handle version bump - either from command line argument or interactive.
+    if [ ! -z "$1" ]; then
+        # Command line argument provided (patch, minor, major, hotfix).
+        case "$1" in
+            "patch"|"minor"|"major"|"hotfix")
+                echo "Auto-bumping version ($1)..."
+                package_version_bump_auto "$1"
+                ;;
+            *)
+                echo "❌ Invalid version bump type: $1"
+                echo "Valid options: patch, minor, major, hotfix"
+                exit 1
+                ;;
+        esac
+    else
+        # Interactive mode - ask if they want to bump version.
+        if confirm "Current version in package.json is $CURRENT_VERSION. Do you want to bump the version now?"; then
+            if ! package_version_bump_interactive; then
+                echo "❌ Version bump failed or was cancelled. Aborting release."
+                return 1
+            fi
+        else
+            echo "Staying at version $CURRENT_VERSION."
+        fi
+    fi
+
+    # Refresh the version, as it may have changed.
+    CURRENT_VERSION=$(get_version_package_json)
+
+    echo "📤 Pushing latest code to main..."
+    git push -q
+
+    # Create the release branch.
+    echo ">> Creating release branch...."
+    git checkout -b "release/$CURRENT_VERSION"
+
+    echo ">> Pushing release branch to origin..."
+    git push -q --set-upstream origin "release/$CURRENT_VERSION"
+
+    # Tag the version.
+    echo "🏷️  Creating release tag..."
+    git_tag_release "$CURRENT_VERSION"
+
+    # Create GitHub release.
+    echo "🎉 Creating GitHub release..."
+    if changelog_exists; then
+        local RELEASE_NOTES=$(extract_version_updates_from_changelog "$CURRENT_VERSION")
+        gh release create "v$CURRENT_VERSION" -n "$RELEASE_NOTES" -t "v$CURRENT_VERSION"
+    else
+        gh release create "v$CURRENT_VERSION"
+    fi
+
+    git_post_create_release "$CURRENT_VERSION" "$CURRENT_BRANCH"
+
+    echo "🎊 SUCCESS: Version $CURRENT_VERSION release created!"
+}
+
+# Quiet version of git_create_release for use in wp_create_release
+function git_create_release_quiet() {
+    # We need to allow interactive prompts but suppress verbose output
+    # Let's create a modified version that's less verbose
+
+    # Set some vars
+    local CURRENT_DIR=$(pwd)
+    local BASENAME=$(basename "$CURRENT_DIR")
+    local PACKAGE_MANAGER=$(get_package_manager_for_project)
+    local CURRENT_VERSION=$(get_version_package_json)
+
+    CURRENT_BRANCH=$(git branch --show-current)
+
+    # Check if we're on an allowed release branch.
+    if [ "$CURRENT_BRANCH" != "development" ] && [ "$CURRENT_BRANCH" != "hotfix" ]; then
+        echo "❌ Error: Releases can only be created from 'development' or 'hotfix' branches."
+        echo "   Current branch: $CURRENT_BRANCH"
+        echo "   Please switch to 'development' or 'hotfix' branch before releasing."
+        exit 1
+    fi
+
+    # Handle version bump - either from command line argument or interactive.
+    if [ ! -z "$1" ]; then
+        # Command line argument provided (patch, minor, major, hotfix).
+        case "$1" in
+            "patch"|"minor"|"major"|"hotfix")
+                package_version_bump_auto "$1" >/dev/null
+                ;;
+            *)
+                echo "❌ Invalid version bump type: $1"
+                echo "Valid options: patch, minor, major, hotfix"
+                exit 1
+                ;;
+        esac
+    else
+        # Interactive mode with version bump options including "stay at current"
+        local options=(
+            "━━━ Current version: $CURRENT_VERSION - Choose action: ━━━"
+            "patch - Bug fixes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "patch"))"
+            "minor - New features (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "minor"))"
+            "major - Breaking changes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "major"))"
+            "hotfix - Critical fixes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "hotfix"))"
+            "custom - Enter custom version"
+            "Stay at current version ($CURRENT_VERSION)"
+        )
+
+        local selected=$(interactive_menu_select "" "${options[@]}")
+
+        # If they selected the header line, show error
+        if [[ "$selected" == "━━━"* ]]; then
+            echo "❌ Please select a valid option, not the header."
+            return 1
+        fi
+        local menu_exit_code=$?
+
+        if [ $menu_exit_code -ne 0 ] || [ -z "$selected" ]; then
+            echo "❌ Version selection cancelled. Aborting release."
+            return 1
+        fi
+
+        # Extract action from selection
+        local action=$(echo "$selected" | cut -d' ' -f1)
+
+        if [ "$action" != "Stay" ]; then
+            # User chose to bump version
+            local bump_type="$action"
+
+            local NEW_VERSION
+            if [ "$bump_type" = "custom" ]; then
+                # Custom version input
+                read -e -p "Enter custom version: " -i "$CURRENT_VERSION" NEW_VERSION
+                if [ -z "$NEW_VERSION" ]; then
+                    echo "❌ No version supplied. Aborting release."
+                    return 1
+                fi
+            else
+                # Calculate new version based on bump type
+                NEW_VERSION=$(calculate_new_version "$CURRENT_VERSION" "$bump_type")
+            fi
+
+            # Update package.json
+            bump_version_package_json "$NEW_VERSION" >/dev/null
+
+            # Update WordPress plugin/theme files if applicable
+            if [[ $PWD/ = */wp-content/plugins/* ]] || [[ $PWD/ = */wp-content/themes/* ]]; then
+                wp_plugin_bump_version "$NEW_VERSION" >/dev/null 2>&1
+            fi
+
+            # Commit changes
+            git add . >/dev/null 2>&1
+            git commit -m "Version $NEW_VERSION bump." >/dev/null 2>&1
+
+            # Show feedback about the version bump (only if not in quiet mode)
+            if [ "$1" != "quiet" ]; then
+                echo "✅ Version bumped to $NEW_VERSION"
+            fi
+        fi
+    fi
+
+    # Refresh the version, as it may have changed.
+    CURRENT_VERSION=$(get_version_package_json)
+
+    # Update changelog in development branch before release
+    if changelog_exists; then
+        local current_date=$(date +%Y-%m-%d)
+
+        # Replace [NEXT_VERSION] with the actual version and today's date
+        if grep -q "## \[NEXT_VERSION\]" "CHANGELOG.md"; then
+            sed -i "s/^## \[NEXT_VERSION\] - \[UNRELEASED\]/## [$CURRENT_VERSION] - $current_date/" "CHANGELOG.md"
+            git add CHANGELOG.md >/dev/null 2>&1
+            git commit -m "Update changelog for v$CURRENT_VERSION" >/dev/null 2>&1
+        fi
+    fi
+
+    # Push latest code to main (quietly)
+    git push -q >/dev/null 2>&1
+
+    # Create the release branch (quietly)
+    git checkout -b "release/$CURRENT_VERSION" >/dev/null 2>&1
+    git push -q --set-upstream origin "release/$CURRENT_VERSION" >/dev/null 2>&1
+
+    # Tag the version (quietly)
+    git tag -a "v$CURRENT_VERSION" -m "Version $CURRENT_VERSION" >/dev/null 2>&1
+    git push -q -u origin "v$CURRENT_VERSION" >/dev/null 2>&1
+
+    # Create GitHub release (quietly)
+    if changelog_exists; then
+        local RELEASE_NOTES=$(extract_version_updates_from_changelog "$CURRENT_VERSION")
+        gh release create "v$CURRENT_VERSION" -n "$RELEASE_NOTES" -t "v$CURRENT_VERSION" >/dev/null 2>&1
+    else
+        gh release create "v$CURRENT_VERSION" >/dev/null 2>&1
+    fi
+
+    # Post-release cleanup (quietly)
+    git checkout main >/dev/null 2>&1
+    git merge "release/$CURRENT_VERSION" --no-ff -m "Merge release/$CURRENT_VERSION into main" >/dev/null 2>&1
+    git push -q origin main >/dev/null 2>&1
+
+    git checkout "$CURRENT_BRANCH" >/dev/null 2>&1
+
+    # Add new [NEXT_VERSION] template when back on development branch
+    if changelog_exists; then
+        # Add a new [NEXT_VERSION] template after the "# Changelog" header
+        sed -i '/^# Changelog/a\\n## [NEXT_VERSION] - [UNRELEASED]' "CHANGELOG.md"
+        sed -i '/^## \[NEXT_VERSION\]/a* BUG: Example fix description.' "CHANGELOG.md"
+
+        # Commit the new template
+        git add CHANGELOG.md >/dev/null 2>&1
+        git commit -m "Add template changelog entry for next version" >/dev/null 2>&1
+    fi
+
+    # Return the version number
+    echo "$CURRENT_VERSION"
+    return 0
+}
+
+function git_create_simple_release() {
+    CURRENT_VERSION=$(get_version_package_json)
+
+    CURRENT_BRANCH=$(git branch --show-current)
+
+    # Check if we're on an allowed release branch.
+    if [ "$CURRENT_BRANCH" != "development" ] && [ "$CURRENT_BRANCH" != "hotfix" ]; then
+        echo "❌ Error: Releases can only be created from 'development' or 'hotfix' branches."
+        echo "   Current branch: $CURRENT_BRANCH"
+        echo "   Please switch to 'development' or 'hotfix' branch before releasing."
+        exit 1
+    fi
+
+    # Version bump.
+    confirm "Current version in package.json is $CURRENT_VERSION. Do you want to bump the version now?"
+    if ([ $? == 1 ])
+    then
+        echo "Staying at version $CURRENT_VERSION."
+    else
+        if ! package_version_bump_interactive; then
+            echo "❌ Version bump failed or was cancelled. Aborting release."
+            return 1
+        fi
+    fi
+
+    # Refresh the version, as it may have changed.
+    CURRENT_VERSION=$(get_version_package_json)
+
+    # Check if a changelog exists.
+    if changelog_exists; then
+        # Changelog exists, proceed with version check
+        CHANGELOG_TOP_VERSION=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[(.*)\].*/\1/')
+
+        # Check if the top entry is NEXT_VERSION - UNRELEASED format
+        if [ "$CHANGELOG_TOP_VERSION" = "NEXT_VERSION" ]; then
+            # Update NEXT_VERSION to actual version and UNRELEASED to current date
+            # Only modify CHANGELOG.md, exclude .sh files
+            CURRENT_DATE=$(date +%Y-%m-%d)
+            sed -i "0,/^## \[NEXT_VERSION\] - \[UNRELEASED\]/ s/^## \[NEXT_VERSION\] - \[UNRELEASED\]/## [$CURRENT_VERSION] - $CURRENT_DATE/" CHANGELOG.md
+            echo "✅ Updated NEXT_VERSION entry in CHANGELOG.md to [$CURRENT_VERSION] - $CURRENT_DATE."
+        elif [ "$CHANGELOG_TOP_VERSION" != "$CURRENT_VERSION" ]; then
+            echo "Error: Latest entry in CHANGELOG.md is for version $CHANGELOG_TOP_VERSION, but you're releasing version $CURRENT_VERSION."
+            echo "Please update CHANGELOG.md with the correct version before releasing."
+            return 1
+        else
+            # Update the date in the changelog to today's date
+            CURRENT_DATE=$(date +%Y-%m-%d)
+
+            # Update the changelog entry to have the correct date (replace any existing content after the version)
+            # This handles cases like:
+            # ## [0.2.0] - UNRELEASED
+            # ## [0.2.0] - 2025-09-09
+            # ## [0.2.0] - 2025-09-09 - 2025-09-08 (double dates)
+            # ## [0.2.0]
+            if grep -q "## \\[$CURRENT_VERSION\\]" CHANGELOG.md; then
+                sed -i "0,/## \\[$CURRENT_VERSION\\]/ s/## \\[$CURRENT_VERSION\\].*$/## [$CURRENT_VERSION] - $CURRENT_DATE/" CHANGELOG.md
+                echo "✅ Updated release date in CHANGELOG.md to $CURRENT_DATE."
+            else
+                echo "⚠️  Warning: Could not find version $CURRENT_VERSION in CHANGELOG.md"
+            fi
+        fi
+
+        # Commit the updated changelog
+        git add CHANGELOG.md
+        gc "Update release date in CHANGELOG.md"
+    fi
+
+    git push -q origin "$CURRENT_BRANCH"
+
+    echo ">> Creating release branch...."
+    git checkout -b "release/$CURRENT_VERSION"
+
+    echo ">> Pushing release branch to origin..."
+    git push -q --set-upstream origin "release/$CURRENT_VERSION"
+
+    # Tag the version.
+    git_tag_release "$CURRENT_VERSION"
+
+    # Check if a changelog exists.
+    CHANGELOG_EXISTS=$(changelog_exists)
+
+    # Check if changelog is present.
+    if $CHANGELOG_EXISTS;
+    then
+        RELEASE_NOTES=$(extract_version_updates_from_changelog "$CURRENT_VERSION")
+        gh release create "v$CURRENT_VERSION" -n "$RELEASE_NOTES" -t "v$CURRENT_VERSION"
+    else
+        gh release create "v$CURRENT_VERSION"
+    fi
+
+    git_post_create_release "$CURRENT_VERSION" "$CURRENT_BRANCH"
 }
 
 # Post-release cleanup: merge release branch to main and return to original branch.
@@ -267,7 +621,7 @@ function git_post_create_release() {
 
     # Push main branch.
     echo "Pushing main branch..."
-    git push origin main
+    git push -q origin main
 
     # Return to original branch.
     echo "Returning to original branch: $original_branch"
@@ -276,7 +630,8 @@ function git_post_create_release() {
     # Add template changelog entry if changelog file exists.
     if changelog_exists; then
         echo "Adding template changelog entry..."
-        sed -i "s/## \[$current_version\]/## 0.2.4 - [UNRELEASED]\n* BUG: Example fix description.\n\n## [$current_version]/" "CHANGELOG.md"
+        # Only modify CHANGELOG.md, use anchored pattern to avoid .sh files
+        sed -i "s/^## \[$current_version\]/## [NEXT_VERSION] - [UNRELEASED]\n* BUG: Example fix description.\n\n## [$current_version]/" "CHANGELOG.md"
         echo "✅ Template changelog entry added to CHANGELOG.md"
     fi
 
