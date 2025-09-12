@@ -74,9 +74,9 @@ echo ""
 
 # Test 7: Check for production/build scripts
 echo "🔨 Testing build script detection..."
-if current_dir_has_production_script; then
+if current_dir_has_npm_production_script; then
     echo "✅ Production script found"
-elif current_dir_has_build_script; then
+elif current_dir_has_npm_build_script; then
     echo "✅ Build script found"
 else
     echo "ℹ️  No production or build script found"

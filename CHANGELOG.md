@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.4.0] - 2025-09-12
+* ENH: Import latest updates from bash_includes.
+
 ## [0.3.0] - 2025-09-10
 * ENH: Try interactive_menu_select function.
 

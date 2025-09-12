@@ -29,6 +29,16 @@ function confirm() {
     done
 }
 
+# Simple step display functions
+function step_start() {
+    local message="$1"
+    printf "%s..." "$message"
+}
+
+function step_done() {
+    printf "Done! ✅\n"
+}
+
 # File existence check.
 function file_exists() {
     local file_path="$1"
@@ -38,6 +48,10 @@ function file_exists() {
     fi
 
     return 0
+}
+
+function get_temp_dir() {
+    echo "$HOME/tmp"
 }
 
 # Extract version updates from changelog for a specific version.
@@ -103,53 +117,44 @@ function get_package_manager_for_project() {
     fi
 }
 
-# Check if current directory has production script.
-function current_dir_has_production_script() {
-    if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required but not installed." >&2
-        return 1
-    fi
-
-    local LENGTH=$(jq '.scripts.production | length' package.json 2>/dev/null || echo "0")
-
-    if [[ $LENGTH -gt 0 ]]; then
-        echo "Package has a production build."
-        return 0
-    fi
-
-    echo "Package does not have a production build."
-    return 1
+function replace_dashes_with_underscores() {
+    echo $1 | tr "-" "_"
 }
 
-# Check if current directory has build script.
-function current_dir_has_build_script() {
-    if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required but not installed." >&2
-        return 1
-    fi
-
-    local LENGTH=$(jq '.scripts.build | length' package.json 2>/dev/null || echo "0")
+function current_project_has_production_composer_dependencies() {
+    LENGTH=$(jq '.require | length' composer.json)
 
     if [[ $LENGTH -gt 0 ]]; then
-        echo "Package has a build script."
-        return 0
+        echo "Plugin has dependencies.";
+        return
     fi
 
-    echo "Package does not have a build script."
-    return 1
+    echo "Plugin does not have dependencies.";
+    false
 }
 
-# Check if release workflow exists.
-function release_workflow_exists() {
-    if [ -f .github/workflows/release.yml ] || [ -f .github/workflows/release.yaml ]; then
-        return 0
+function current_dir_has_npm_production_script() {
+    LENGTH=$(jq '.scripts.production | length' package.json)
+
+    if [[ $LENGTH -gt 0 ]]; then
+        echo "Package has a production build.";
+        return
     fi
 
-    if ls .github/workflows/release-*.yml >/dev/null 2>&1 || ls .github/workflows/release-*.yaml >/dev/null 2>&1; then
-        return 0
+    echo "Package does not have a production build.";
+    false
+}
+
+function current_dir_has_npm_build_script() {
+    LENGTH=$(jq '.scripts.build | length' package.json)
+
+    if [[ $LENGTH -gt 0 ]]; then
+        echo "Package has a build script.";
+        return
     fi
 
-    return 1
+    echo "Package does not have a build script.";
+    false
 }
 
 # Interactive menu selection with cursor support
@@ -160,8 +165,7 @@ function interactive_menu_select() {
 
     # Try fzf first (modern, best UX)
     if command -v fzf >/dev/null 2>&1; then
-        echo "$prompt" >&2
-        local result=$(printf '%s\n' "${options[@]}" | fzf --height=10 --layout=reverse --border --prompt="Select: " 2>/dev/null)
+        local result=$(printf '%s\n' "${options[@]}" | fzf --height=10 --layout=reverse --border --prompt="Select: " --header="$prompt")
         local fzf_exit=$?
         if [ $fzf_exit -eq 0 ] && [ -n "$result" ]; then
             echo "$result"
@@ -225,9 +229,6 @@ function package_version_bump_interactive() {
         IS_WP_THEME=true
     fi
 
-    echo "Current package version is $CURRENT_VERSION"
-    echo ""
-
     # Create menu options with version previews
     local options=(
         "major - Breaking changes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "major"))"
@@ -237,8 +238,8 @@ function package_version_bump_interactive() {
         "custom - Enter custom version"
     )
 
-    # Use interactive menu
-    local selected=$(interactive_menu_select "Select version bump type:" "${options[@]}")
+    # Use interactive menu with current version in heading
+    local selected=$(interactive_menu_select "Current version is $CURRENT_VERSION. Choose the version for this release:" "${options[@]}")
     local menu_exit_code=$?
 
     if [ $menu_exit_code -ne 0 ] || [ -z "$selected" ]; then
@@ -263,11 +264,11 @@ function package_version_bump_interactive() {
     fi
 
     echo ""
-    echo "Version will be updated from $CURRENT_VERSION to $NEW_VERSION ($bump_type)"
+    echo "Version will be updated from $CURRENT_VERSION to $NEW_VERSION ($bump_type)" >&2
     confirm "Continue with this version bump?"
     if [ $? == 1 ]; then
         echo "Version bump cancelled."
-        exit 1
+        return 1
     fi
 
     # Check if a changelog exists.
@@ -281,26 +282,37 @@ function package_version_bump_interactive() {
             # Update NEXT_VERSION entry with version and current date.
             CURRENT_DATE=$(date +%Y-%m-%d)
 
-            # Handle both old format 0.2.6 and new format 0.2.6 - [UNRELEASED]
+            # Handle both old format [NEXT_VERSION] and new format [NEXT_VERSION] - [UNRELEASED]
+            # Only modify CHANGELOG.md, exclude .sh files
             if grep -q "## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]" CHANGELOG.md; then
-                sed -i "0,/## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$NEW_VERSION] - $CURRENT_DATE/" CHANGELOG.md
+                sed -i "0,/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$NEW_VERSION] - $CURRENT_DATE/" CHANGELOG.md
             else
-                sed -i "0,/## \\[NEXT_VERSION\\]/ s/## \\[NEXT_VERSION\\].*$/## [$NEW_VERSION] - $CURRENT_DATE/" CHANGELOG.md
+                sed -i "0,/^## \\[NEXT_VERSION\\]/ s/^## \\[NEXT_VERSION\\].*$/## [$NEW_VERSION] - $CURRENT_DATE/" CHANGELOG.md
             fi
             echo "Updated NEXT_VERSION entry in CHANGELOG.md to [$NEW_VERSION] - $CURRENT_DATE."
 
             # Commit the updated changelog.
             git add CHANGELOG.md
             gc "Update CHANGELOG.md for release $NEW_VERSION"
+        else
+            echo "WARNING: No [NEXT_VERSION] entry found at top of CHANGELOG.md"
+            echo "   Top entry is: [$CHANGELOG_TOP_ENTRY]"
+            echo "   Expected: [NEXT_VERSION] or [NEXT_VERSION] - [UNRELEASED]"
+
+            if ! confirm "Continue without updating changelog?"; then
+                echo "Release cancelled. Please add a [NEXT_VERSION] entry to CHANGELOG.md"
+                return 1
+            fi
         fi
     fi
 
-    # Update package.json.
+    # Update package.json
     bump_version_package_json "$NEW_VERSION"
     echo "Updated version in package.json."
 
     # Update composer.json if it exists.
     local COMPOSER_JSON_FILENAME='composer.json'
+
     if [ -f "$COMPOSER_JSON_FILENAME" ]; then
         jq ".version = \"$NEW_VERSION\"" composer.json > composer.json.tmp && mv composer.json.tmp composer.json
         echo "Updated version in $COMPOSER_JSON_FILENAME."
@@ -319,11 +331,11 @@ function package_version_bump_interactive() {
         wp_plugin_bump_version "$NEW_VERSION"
     fi
 
-    # Replace 0.1.1 placeholders in all files.
-    echo "Searching for 0.1.1 placeholders to replace with $NEW_VERSION..."
+    # Replace [NEXT_VERSION] placeholders in all files.
+    echo "Searching for [NEXT_VERSION] placeholders to replace with $NEW_VERSION..."
     local NEXT_VERSION_FILES
 
-    # Find all files containing 0.1.1 (excluding binary files, node_modules, vendor, .git).
+    # Find all files containing [NEXT_VERSION] (excluding binary files, node_modules, vendor, .git).
     if command -v grep >/dev/null 2>&1; then
         NEXT_VERSION_FILES=$(grep -r -l "\[NEXT_VERSION\]" . \
             --exclude-dir=node_modules \
@@ -347,31 +359,31 @@ function package_version_bump_interactive() {
             --exclude="*.mp3" \
             --exclude="*.wav" \
             --exclude="*.lock" \
-            --exclude="*release.sh" \
+            --exclude="*.sh" \
             2>/dev/null || true)
 
         if [ -n "$NEXT_VERSION_FILES" ]; then
-            echo "Found 0.1.1 placeholders in the following files:"
+            echo "Found [NEXT_VERSION] placeholders in the following files:"
             echo "$NEXT_VERSION_FILES" | while IFS= read -r file; do
                 echo "  - $file"
             done
             echo ""
 
-            # Replace 0.1.1 with the actual version in each file.
+            # Replace [NEXT_VERSION] with the actual version in each file.
             echo "$NEXT_VERSION_FILES" | while IFS= read -r file; do
                 if [ -f "$file" ]; then
-                    # Use sed to replace 0.1.1 with the new version.
+                    # Use sed to replace [NEXT_VERSION] with the new version.
                     if command -v sed >/dev/null 2>&1; then
                         sed -i "s/\[NEXT_VERSION\]/$NEW_VERSION/g" "$file"
-                        echo "Updated 0.1.1 → $NEW_VERSION in $file"
+                        echo "Updated [NEXT_VERSION] → $NEW_VERSION in $file"
                     fi
                 fi
             done
         else
-            echo "No 0.1.1 placeholders found."
+            echo "No [NEXT_VERSION] placeholders found."
         fi
     else
-        echo "grep command not available, skipping 0.1.1 replacement."
+        echo "grep command not available, skipping [NEXT_VERSION] replacement."
     fi
 
     # Commit changes.
@@ -381,7 +393,430 @@ function package_version_bump_interactive() {
     echo "Version bump to $NEW_VERSION complete."
 }
 
-# Calculate new version based on bump type.
+function package_version_bump_auto() {
+    local bump_type="$1"
+    local current_version=$(get_version_package_json)
+
+    local new_version=$(calculate_new_version "$current_version" "$bump_type")
+
+    echo "Auto-bumping version from $current_version to $new_version ($bump_type)"
+
+    # Update package.json
+    bump_version_package_json "$new_version"
+    echo "Updated version in package.json."
+
+    # Update other files (same logic as interactive version)
+    # ... (rest of the version update logic would go here)
+
+    # Commit changes
+    git add .
+    gc "Version $new_version bump."
+
+    echo "Version bump to $new_version complete."
+}
+
+# Copy folder with configurable exclusions using robocopy or rsync
+function copy_folder() {
+    local source_dir="$1"
+    local dest_dir="$2"
+    local quiet_mode="${3:-false}"
+
+    # Default exclusions list
+    local default_exclusions=(
+        "node_modules"
+        ".git"
+        ".github"
+        ".gitignore"
+        "vendor"
+        "tests"
+        ".github"
+        "*.log"
+        ".DS_Store"
+        "Thumbs.db"
+        "*.tmp"
+        ".vscode"
+        "*.bak"
+        ".wakatime-project"
+        "bin"
+    )
+
+    # Use custom exclusions if provided, otherwise use defaults
+    local exclusions=("${COPY_EXCLUSIONS[@]:-${default_exclusions[@]}}")
+
+    if [ "$quiet_mode" != "true" ]; then
+        echo "Copying files from $source_dir to $dest_dir"
+    fi
+
+    # Check if either robocopy or rsync is available
+    if ! command -v robocopy >/dev/null 2>&1 && ! command -v rsync >/dev/null 2>&1; then
+        echo "❌ Error: Neither robocopy nor rsync found. One is required for folder copying."
+        return 1
+    fi
+
+    # Ensure destination directory exists
+    mkdir -p "$dest_dir"
+
+    # Convert to Windows paths if cygpath is available and using robocopy
+    local source_dir_posix="$source_dir"
+    local dest_dir_posix="$dest_dir"
+
+    if command -v robocopy >/dev/null 2>&1; then
+        if [ "$quiet_mode" != "true" ]; then
+            echo "Using robocopy..."
+        fi
+
+        if command -v cygpath >/dev/null 2>&1; then
+            source_dir_posix=$(cygpath -w "$source_dir")
+            dest_dir_posix=$(cygpath -w "$dest_dir")
+        fi
+
+        # Build exclusion arguments for robocopy (separate dirs and files)
+        local robocopy_dir_excludes=()
+        local robocopy_file_excludes=()
+
+        for exclusion in "${exclusions[@]}"; do
+            if [[ "$exclusion" == *.* ]] && [[ "$exclusion" != .* ]]; then
+                # File pattern exclusion (but not dot-prefixed directories)
+                robocopy_file_excludes+=("//XF" "$exclusion")
+            else
+                # Directory exclusion - robocopy needs just the directory name, not full path
+                robocopy_dir_excludes+=("//XD" "$exclusion")
+            fi
+        done
+
+        # Windows robocopy (handle exit codes properly)
+        set +e  # Temporarily disable exit on error for robocopy
+        if [ "$quiet_mode" = "true" ]; then
+            robocopy "$source_dir_posix" "$dest_dir_posix" //MIR //NS //NC //NFL //NDL //NJH //NJS //NP "${robocopy_dir_excludes[@]}" "${robocopy_file_excludes[@]}" >/dev/null 2>&1
+        else
+            robocopy "$source_dir_posix" "$dest_dir_posix" //MIR //NS //NC //NFL //NDL //NJH //NJS //NP "${robocopy_dir_excludes[@]}" "${robocopy_file_excludes[@]}"
+        fi
+        local robocopy_exit=$?
+        set -e  # Re-enable exit on error
+
+        # robocopy exit codes: 0=no files, 1=files copied, 2=extra files, 4=mismatched, 8+=errors
+        if [ $robocopy_exit -ge 8 ]; then
+            echo "❌ Error: robocopy failed with exit code $robocopy_exit"
+            return 1
+        fi
+
+    elif command -v rsync >/dev/null 2>&1; then
+        if [ "$quiet_mode" != "true" ]; then
+            echo "Using rsync..."
+        fi
+
+        # Build exclusion arguments for rsync
+        local rsync_excludes=()
+        for exclusion in "${exclusions[@]}"; do
+            rsync_excludes+=("--exclude=$exclusion")
+        done
+
+        if [ "$quiet_mode" = "true" ]; then
+            rsync -aq "${rsync_excludes[@]}" "$source_dir/" "$dest_dir/"
+        else
+            rsync -aqv "${rsync_excludes[@]}" "$source_dir/" "$dest_dir/"
+        fi
+
+    else
+        echo "❌ Error: No copy utility found (robocopy or rsync required)"
+        return 1
+    fi
+
+    if [ "$quiet_mode" != "true" ]; then
+        echo "✅ Folder copied successfully from $source_dir to $dest_dir"
+    fi
+}
+
+# Create ZIP file with configurable exclusions
+function zip_folder() {
+    local source_dir="$1"
+    local zip_filename="$2"
+    local zip_name="$3"
+    local quiet_mode="${4:-false}"
+
+    # Check if either zip or 7z is available
+    if ! command -v zip >/dev/null 2>&1 && ! command -v 7z.exe >/dev/null 2>&1; then
+        echo "❌ Error: Neither zip nor 7zip found. One is required for folder compression."
+        return 1
+    fi
+
+    # Default exclusions list
+    local default_exclusions=(
+        "*.git*"
+        "*.dist"
+        ".env*"
+        "composer.*"
+        "package.json"
+        "package-lock.json"
+        "*.lock"
+        "webpack.config.js"
+        "*.map"
+        ".babelrc"
+        "postcss.config.js"
+        ".cache"
+        "./tests"
+        ".husky"
+        "playwright*"
+        ".wakatime*"
+        ".eslint*"
+        "eslint*"
+        ".dist*"
+        ".nvmrc"
+        ".vscode"
+        ".editorconfig"
+        "./codecov"
+        "assets/src"
+        "*/assets/src"
+        "*/*/assets/src"
+        "*/*/*/assets/src"
+        "assets/*/src"
+        "*/assets/*/src"
+        "test-results"
+        "./bin"
+        ".distignore"
+        "vite.config.js"
+    )
+
+    # Check if we should exclude node_modules directory based on dependencies.
+    if [ -f "package.json" ] && command -v jq >/dev/null 2>&1; then
+        local dependencies_length=$(jq '.dependencies | length' package.json 2>/dev/null || echo "0")
+
+        if [[ $dependencies_length -eq 0 ]]; then
+            default_exclusions+=("./node_modules")
+        fi
+    else
+        # No package.json or jq not available, exclude node_modules directory by default.
+        default_exclusions+=("./node_modules")
+    fi
+
+    # Check if we should exclude vendor directory based on dependencies.
+    # Only exclude vendor if the project has no production dependencies (or only PHP requirement).
+    if [ -f "composer.json" ] && command -v jq >/dev/null 2>&1; then
+        local require_length=$(jq '.require | length' composer.json 2>/dev/null || echo "0")
+        local has_php_only=$(jq '.require | keys | length == 1 and .[0] == "php"' composer.json 2>/dev/null || echo "false")
+
+        if [[ $require_length -eq 0 ]] || [[ "$has_php_only" == "true" ]]; then
+            # No production dependencies or only PHP requirement, exclude vendor directory.
+            default_exclusions+=("./vendor")
+        fi
+    else
+        # No composer.json or jq not available, exclude vendor directory by default.
+        default_exclusions+=("./vendor")
+    fi
+
+    if is_wp_block_plugin; then
+        default_exclusions+=("./src")
+    fi
+
+    local exclusions=("${ZIP_EXCLUSIONS[@]:-${default_exclusions[@]}}")
+
+    if [ "$quiet_mode" != "true" ]; then
+        echo "Creating ZIP file: $zip_filename"
+    fi
+
+    if command -v zip >/dev/null 2>&1; then
+        if [ "$quiet_mode" != "true" ]; then
+            echo "Using zip command..."
+        fi
+        cd "$(get_temp_dir)"
+
+        local zip_excludes=()
+        for exclusion in "${exclusions[@]}"; do
+            # Handle different exclusion patterns for zip command
+            if [[ "$exclusion" == ./* ]]; then
+                # Remove ./ prefix for zip command
+                local clean_exclusion="${exclusion#./}"
+                zip_excludes+=("-x" "${zip_name}/${clean_exclusion}" "${zip_name}/${clean_exclusion}/*")
+            elif [[ "$exclusion" == */* ]]; then
+                # Path with subdirectories
+                zip_excludes+=("-x" "${zip_name}/${exclusion}" "${zip_name}/${exclusion}/*")
+            else
+                # Simple file/directory name
+                zip_excludes+=("-x" "${zip_name}/${exclusion}" "${zip_name}/${exclusion}/*" "*/${exclusion}" "*/${exclusion}/*")
+            fi
+        done
+
+        zip -r -q "$zip_filename" "$zip_name" "${zip_excludes[@]}"
+
+    elif command -v 7z.exe >/dev/null 2>&1; then
+        if [ "$quiet_mode" != "true" ]; then
+            echo "Using 7-Zip..."
+        fi
+
+        local sevenz_excludes=()
+        for exclusion in "${exclusions[@]}"; do
+            sevenz_excludes+=("-xr!${exclusion}")
+        done
+
+        7z.exe a "$zip_filename" "$source_dir" "${sevenz_excludes[@]}" >/dev/null 2>&1
+
+    elif command -v 7z >/dev/null 2>&1; then
+        if [ "$quiet_mode" != "true" ]; then
+            echo "Using 7z..."
+        fi
+
+        local sevenz_excludes=()
+        for exclusion in "${exclusions[@]}"; do
+            sevenz_excludes+=("-xr!${exclusion}")
+        done
+
+        7z a "$zip_filename" "$source_dir" "${sevenz_excludes[@]}" >/dev/null 2>&1
+
+    else
+        echo "❌ Error: No ZIP utility found (zip, 7z.exe, or 7z required)"
+        return 1
+    fi
+
+    if [ "$quiet_mode" != "true" ]; then
+        echo "✅ ZIP file created successfully: $zip_filename"
+    fi
+}
+
+# Build project for production with package manager detection and dependency management
+function build_for_production() {
+    local quiet_mode="${1:-false}"
+
+    if [ "$quiet_mode" != "true" ]; then
+        echo "🏗️  Building project for production..."
+    fi
+
+    # Detect package manager
+    local PACKAGE_MANAGER
+    if [ -f "yarn.lock" ]; then
+        PACKAGE_MANAGER="yarn"
+    elif [ -f "package.json" ]; then
+        PACKAGE_MANAGER="npm"
+    else
+        if [ "$quiet_mode" != "true" ]; then
+            echo "⚠️  No package.json found, skipping Node.js build steps"
+        fi
+        PACKAGE_MANAGER=""
+    fi
+
+    # Clean install and build with detected package manager
+    if [ -n "$PACKAGE_MANAGER" ]; then
+        if [ "$quiet_mode" != "true" ]; then
+            echo "📦 Using package manager: $PACKAGE_MANAGER"
+        fi
+
+        if [ "$PACKAGE_MANAGER" = "yarn" ]; then
+            if [ "$quiet_mode" != "true" ]; then
+                echo "🧹 Clean installing dependencies with yarn..."
+                yarn --silent install --frozen-lockfile
+            else
+                yarn --silent install --frozen-lockfile >/dev/null 2>&1
+            fi
+
+            if [ "$quiet_mode" != "true" ]; then
+                echo "🔨 Running production build with yarn..."
+            fi
+            if [ "$quiet_mode" = "true" ]; then
+                yarn --silent run build >/dev/null 2>&1 || yarn --silent run production >/dev/null 2>&1 || true
+            else
+                if yarn --silent run build >/dev/null 2>&1; then
+                    echo "✅ Yarn build completed successfully"
+                elif yarn --silent run production >/dev/null 2>&1; then
+                    echo "✅ Yarn production build completed successfully"
+                else
+                    echo "⚠️  No build or production script found in package.json"
+                fi
+            fi
+        else
+            if [ "$quiet_mode" != "true" ]; then
+                echo "🧹 Clean installing dependencies with npm..."
+                npm --silent ci
+            else
+                npm --silent ci >/dev/null 2>&1
+            fi
+
+            if [ "$quiet_mode" != "true" ]; then
+                echo "🔨 Running production build with npm..."
+            fi
+            if [ "$quiet_mode" = "true" ]; then
+                npm run --silent production >/dev/null 2>&1 || npm run --silent build >/dev/null 2>&1 || true
+            else
+                if npm run --silent production >/dev/null 2>&1; then
+                    echo "✅ NPM build completed successfully"
+                elif npm run --silent build >/dev/null 2>&1; then
+                    echo "✅ NPM production build completed successfully"
+                else
+                    echo "⚠️  No build or production script found in package.json"
+                fi
+            fi
+        fi
+
+        # Prune dev dependencies after build
+        if [ "$quiet_mode" != "true" ]; then
+            echo "🧹 Pruning development dependencies..."
+        fi
+        if [ "$PACKAGE_MANAGER" = "yarn" ]; then
+            if [ "$quiet_mode" = "true" ]; then
+                yarn --silent install --production=true >/dev/null 2>&1 || true
+            else
+                yarn --silent install --production=true || true
+            fi
+        else
+            if [ "$quiet_mode" = "true" ]; then
+                npm --silent prune --omit=dev >/dev/null 2>&1
+            else
+                npm --silent prune --omit=dev
+            fi
+        fi
+    fi
+
+    # Handle Composer dependencies if they exist
+    if [ -f "composer.json" ] && command -v composer >/dev/null 2>&1; then
+        if command -v jq >/dev/null 2>&1; then
+            local require_length=$(jq '.require | length' composer.json 2>/dev/null || echo "0")
+            local has_php_only=$(jq '.require | keys | length == 1 and .[0] == "php"' composer.json 2>/dev/null || echo "false")
+
+            if [[ $require_length -gt 0 ]] && [[ "$has_php_only" != "true" ]]; then
+                if [ "$quiet_mode" != "true" ]; then
+                    echo "📦 Project has Composer production dependencies"
+                    composer update --quiet --no-dev --optimize-autoloader --no-interaction
+                    echo "✅ Composer dependencies updated for production"
+                else
+                    composer update --quiet --no-dev --optimize-autoloader --no-interaction >/dev/null 2>&1
+                fi
+            else
+                if [ "$quiet_mode" != "true" ]; then
+                    echo "ℹ️  Project has no Composer production dependencies, skipping composer update"
+                fi
+            fi
+        else
+            if [ "$quiet_mode" != "true" ]; then
+                echo "⚠️  jq not available, cannot check Composer dependencies"
+            fi
+        fi
+    elif [ -f "composer.json" ]; then
+        if [ "$quiet_mode" != "true" ]; then
+            echo "⚠️  composer.json found but Composer not available"
+        fi
+    fi
+
+    if [ "$quiet_mode" != "true" ]; then
+        echo "✅ Production build completed successfully"
+    fi
+}
+
+# Compare two versions (returns 0 if v1 < v2, 1 if v1 >= v2)
+function version_lt() {
+    local v1="$1"
+    local v2="$2"
+
+    # Remove 'v' prefix if present
+    v1=${v1#v}
+    v2=${v2#v}
+
+    # Use sort -V for version comparison
+    if [ "$(printf '%s\n' "$v1" "$v2" | sort -V | head -n1)" = "$v1" ] && [ "$v1" != "$v2" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Calculate new version based on bump type
 function calculate_new_version() {
     local current_version="$1"
     local bump_type="$2"
@@ -427,24 +862,4 @@ function calculate_new_version() {
     else
         echo "$major.$minor.$patch"
     fi
-}
-
-# Calculate new version based on bump type.
-function package_version_bump_auto() {
-    local bump_type="$1"
-    local current_version=$(get_version_package_json)
-
-    local new_version=$(calculate_new_version "$current_version" "$bump_type")
-
-    echo "Auto-bumping version from $current_version to $new_version ($bump_type)"
-
-    # Update package.json.
-    bump_version_package_json "$new_version"
-    echo "Updated version in package.json."
-
-    # Commit changes.
-    git add .
-    gc "Version $new_version bump."
-
-    echo "Version bump to $new_version complete."
 }
