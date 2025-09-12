@@ -355,8 +355,27 @@ function git_create_release() {
 
 # Quiet version of git_create_release for use in wp_create_release
 function git_create_release_quiet() {
-    # We need to allow interactive prompts but suppress verbose output
-    # Let's create a modified version that's less verbose
+    # Parse arguments
+    local quiet_mode="false"
+    local version_bump=""
+
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --quiet)
+                quiet_mode="true"
+                shift
+                ;;
+            patch|minor|major|hotfix)
+                version_bump="$1"
+                shift
+                ;;
+            *)
+                echo "❌ Invalid argument: $1"
+                echo "Usage: git_create_release_quiet [--quiet] [patch|minor|major|hotfix]"
+                exit 1
+                ;;
+        esac
+    done
 
     # Set some vars
     local CURRENT_DIR=$(pwd)
@@ -374,21 +393,19 @@ function git_create_release_quiet() {
         exit 1
     fi
 
+    if ! changelog_check_next_version; then
+        echo "❌ Error: Latest entry in CHANGELOG.md is not for NEXT_VERSION.  Please update CHANGELOG.md before releasing."
+        exit 1
+    fi
+
     # Handle version bump - either from command line argument or interactive.
-    if [ ! -z "$1" ]; then
+    if [ ! -z "$version_bump" ]; then
         # Command line argument provided (patch, minor, major, hotfix).
-        case "$1" in
-            "patch"|"minor"|"major"|"hotfix")
-                package_version_bump_auto "$1" >/dev/null
-                ;;
-            *)
-                echo "❌ Invalid version bump type: $1"
-                echo "Valid options: patch, minor, major, hotfix"
-                exit 1
-                ;;
-        esac
+        package_version_bump_auto "$version_bump" >/dev/null
     else
         # Interactive mode with version bump options including "stay at current"
+        echo ""
+        printf "  🔢 Version Selection Required\n"
         local options=(
             "━━━ Current version: $CURRENT_VERSION - Choose action: ━━━"
             "patch - Bug fixes (${CURRENT_VERSION} → $(calculate_new_version "$CURRENT_VERSION" "patch"))"
@@ -415,6 +432,7 @@ function git_create_release_quiet() {
 
         # Extract action from selection
         local action=$(echo "$selected" | cut -d' ' -f1)
+        printf "  ✅ Selected: %s\n" "$selected"
 
         if [ "$action" != "Stay" ]; then
             # User chose to bump version
@@ -444,28 +462,15 @@ function git_create_release_quiet() {
             # Commit changes
             git add . >/dev/null 2>&1
             git commit -m "Version $NEW_VERSION bump." >/dev/null 2>&1
-
-            # Show feedback about the version bump (only if not in quiet mode)
-            if [ "$1" != "quiet" ]; then
-                echo "✅ Version bumped to $NEW_VERSION"
-            fi
         fi
     fi
 
     # Refresh the version, as it may have changed.
     CURRENT_VERSION=$(get_version_package_json)
 
-    # Update changelog in development branch before release
-    if changelog_exists; then
-        local current_date=$(date +%Y-%m-%d)
+    changelog_update_current_version
 
-        # Replace [NEXT_VERSION] with the actual version and today's date
-        if grep -q "## \[NEXT_VERSION\]" "CHANGELOG.md"; then
-            sed -i "s/^## \[NEXT_VERSION\] - \[UNRELEASED\]/## [$CURRENT_VERSION] - $current_date/" "CHANGELOG.md"
-            git add CHANGELOG.md >/dev/null 2>&1
-            git commit -m "Update changelog for v$CURRENT_VERSION" >/dev/null 2>&1
-        fi
-    fi
+    echo "    - Updated changelog."
 
     # Push latest code to main (quietly)
     git push -q >/dev/null 2>&1
@@ -474,34 +479,32 @@ function git_create_release_quiet() {
     git checkout -b "release/$CURRENT_VERSION" >/dev/null 2>&1
     git push -q --set-upstream origin "release/$CURRENT_VERSION" >/dev/null 2>&1
 
+    echo "    - Release branch created."
+
     # Tag the version (quietly)
     git tag -a "v$CURRENT_VERSION" -m "Version $CURRENT_VERSION" >/dev/null 2>&1
     git push -q -u origin "v$CURRENT_VERSION" >/dev/null 2>&1
 
+    echo "    - Version v$CURRENT_VERSION tagged."
+
     # Create GitHub release (quietly)
-    github_create_release "$CURRENT_VERSION"
+    github_create_release "$CURRENT_VERSION" >/dev/null 2>&1
+
+    echo "    - GitHub release created."
 
     # Post-release cleanup (quietly)
     git checkout main >/dev/null 2>&1
     git merge "release/$CURRENT_VERSION" --no-ff -m "Merge release/$CURRENT_VERSION into main" >/dev/null 2>&1
     git push -q origin main >/dev/null 2>&1
 
+    echo "    - Release branch merged into main."
+
     git checkout "$CURRENT_BRANCH" >/dev/null 2>&1
 
     # Add new [NEXT_VERSION] template when back on development branch
-    if changelog_exists; then
-        # Add a new [NEXT_VERSION] template after the "# Changelog" header
-        sed -i '/^# Changelog/a\\n## [NEXT_VERSION] - [UNRELEASED]' "CHANGELOG.md"
-        sed -i '/^## \[NEXT_VERSION\]/a* BUG: Example fix description.' "CHANGELOG.md"
+    changelog_add_next_version_template --quiet
 
-        # Commit the new template
-        git add CHANGELOG.md >/dev/null 2>&1
-        git commit -m "Add template changelog entry for next version" >/dev/null 2>&1
-    fi
-
-    # Return the version number
-    echo "$CURRENT_VERSION"
-    return 0
+    echo "  ✅ Release version $NEW_VERSION created."
 }
 
 function git_create_simple_release() {
