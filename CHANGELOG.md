@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.4.2] - 2025-09-12
 * BUG: Example fix description.
 
 ## [0.4.1] - 2025-09-12
