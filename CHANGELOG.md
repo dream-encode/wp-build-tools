@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.5.1] - 2025-09-12
+* BUG: Bring everything in line with bash.
+
 ## [0.5.0] - 2025-09-12
 * BUG: Fix some bugs.  Ready for more testing in a plugin.
 

@@ -164,7 +164,7 @@ function git_create_simple_release() {
     # Check if a changelog exists
     if changelog_exists; then
         # Changelog exists, proceed with version check
-        local CHANGELOG_TOP_VERSION=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[(.*)\].*/\1/')
+        local CHANGELOG_TOP_VERSION=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[([^]]*)\].*/\1/')
 
         if [ "$CHANGELOG_TOP_VERSION" != "$CURRENT_VERSION" ]; then
             echo "Error: Latest entry in CHANGELOG.md is for version $CHANGELOG_TOP_VERSION, but you're releasing version $CURRENT_VERSION."
@@ -538,7 +538,7 @@ function git_create_simple_release() {
     # Check if a changelog exists.
     if changelog_exists; then
         # Changelog exists, proceed with version check
-        CHANGELOG_TOP_VERSION=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[(.*)\].*/\1/')
+        CHANGELOG_TOP_VERSION=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[([^]]*)\].*/\1/')
 
         # Check if the top entry is NEXT_VERSION - UNRELEASED format
         if [ "$CHANGELOG_TOP_VERSION" = "NEXT_VERSION" ]; then

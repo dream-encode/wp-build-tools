@@ -71,15 +71,6 @@ function extract_version_updates_from_changelog() {
         version_found && /^\*/' "$CHANGELOG_FILE"
 }
 
-# Check if changelog exists.
-function changelog_exists() {
-    if file_exists "CHANGELOG.md"; then
-        return 0
-    else
-        return 1
-    fi
-}
-
 # Check if package.json exists.
 function package_json_exists() {
     return file_exists "package.json"
@@ -119,6 +110,10 @@ function get_package_manager_for_project() {
 
 function replace_dashes_with_underscores() {
     echo $1 | tr "-" "_"
+}
+
+function deploy_workflow_exists() {
+    return file_exists ".github/workflows/deploy*"
 }
 
 function current_project_has_production_composer_dependencies() {
@@ -189,11 +184,8 @@ function changelog_exists() {
 
 function changelog_check_next_version() {
     if changelog_exists; then
-        # Changelog exists, proceed with version check
-        CHANGELOG_TOP_VERSION=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[(.*)\].*/\1/')
-
-        # Check if the top entry is NEXT_VERSION - UNRELEASED format
-        if [ "$CHANGELOG_TOP_VERSION" = "NEXT_VERSION" ]; then
+        # Check if the changelog contains the NEXT_VERSION - UNRELEASED pattern
+        if grep -q "## \[NEXT_VERSION\] - \[UNRELEASED\]" CHANGELOG.md; then
             return 0
         fi
     fi
@@ -203,7 +195,22 @@ function changelog_check_next_version() {
 
 function changelog_add_next_version_template() {
     local CURRENT_VERSION=$(get_version_package_json)
-    local QUIET_MODE="${1:-false}"
+    local QUIET_MODE="false"
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --quiet)
+                QUIET_MODE="true"
+                shift
+                ;;
+            *)
+                echo "❌ Error: Unknown argument '$1' for changelog_add_next_version_template"
+                echo "Usage: changelog_add_next_version_template [--quiet]"
+                return 1
+                ;;
+        esac
+    done
 
     # Add template changelog entry if changelog file exists.
     if changelog_exists; then
@@ -480,12 +487,93 @@ function package_version_bump_auto() {
 
     echo "Auto-bumping version from $current_version to $new_version ($bump_type)"
 
+    local IS_WP_PLUGIN=false
+    local IS_WP_THEME=false
+
+    if [[ $PWD/ = */wp-content/plugins/* ]]; then
+        IS_WP_PLUGIN=true
+    fi
+
+    if [[ $PWD/ = */wp-content/themes/* ]]; then
+        IS_WP_THEME=true
+    fi
+
+    # Check if a changelog exists and update it
+    if changelog_exists; then
+        # Check if there's a NEXT_VERSION entry at the top
+        CHANGELOG_TOP_ENTRY=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[([^]]*)\].*/\1/')
+
+        if [ "$CHANGELOG_TOP_ENTRY" = "NEXT_VERSION" ]; then
+            # Update NEXT_VERSION entry with version and current date
+            CURRENT_DATE=$(date +%Y-%m-%d)
+
+            # Handle both old format [NEXT_VERSION] and new format [NEXT_VERSION] - [UNRELEASED]
+            if grep -q "## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]" CHANGELOG.md; then
+                sed -i "0,/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$new_version] - $CURRENT_DATE/" CHANGELOG.md
+            else
+                sed -i "0,/^## \\[NEXT_VERSION\\]/ s/^## \\[NEXT_VERSION\\].*$/## [$new_version] - $CURRENT_DATE/" CHANGELOG.md
+            fi
+            echo "Updated NEXT_VERSION entry in CHANGELOG.md to [$new_version] - $CURRENT_DATE."
+        fi
+    fi
+
     # Update package.json
     bump_version_package_json "$new_version"
     echo "Updated version in package.json."
 
-    # Update other files (same logic as interactive version)
-    # ... (rest of the version update logic would go here)
+    # Update composer.json if it exists
+    if [ -f "composer.json" ]; then
+        jq ".version = \"$new_version\"" composer.json > composer.json.tmp && mv composer.json.tmp composer.json
+        echo "Updated version in composer.json."
+    fi
+
+    # Update public/manifest.json if it exists
+    if [ -f "public/manifest.json" ]; then
+        jq ".version = \"$new_version\"" public/manifest.json > public/manifest.json.tmp && mv public/manifest.json.tmp public/manifest.json
+        echo "Updated version in public/manifest.json."
+    fi
+
+    # Update WordPress plugin/theme main file
+    if [ "$IS_WP_PLUGIN" = true ] || [ "$IS_WP_THEME" = true ]; then
+        wp_plugin_bump_version "$new_version"
+    fi
+
+    # Replace [NEXT_VERSION] placeholders in all files
+    if command -v grep >/dev/null 2>&1; then
+        NEXT_VERSION_FILES=$(grep -r -l "\[NEXT_VERSION\]" . \
+            --exclude-dir=node_modules \
+            --exclude-dir=vendor \
+            --exclude-dir=.git \
+            --exclude-dir=tests \
+            --exclude="*.zip" \
+            --exclude="*.tar.gz" \
+            --exclude="*.jpg" \
+            --exclude="*.jpeg" \
+            --exclude="*.png" \
+            --exclude="*.gif" \
+            --exclude="*.ico" \
+            --exclude="*.pdf" \
+            --exclude="*.woff" \
+            --exclude="*.woff2" \
+            --exclude="*.ttf" \
+            --exclude="*.eot" \
+            --exclude="*.svg" \
+            --exclude="*.mp4" \
+            --exclude="*.mp3" \
+            --exclude="*.wav" \
+            --exclude="*.lock" \
+            --exclude="*.sh" \
+            2>/dev/null || true)
+
+        if [ -n "$NEXT_VERSION_FILES" ]; then
+            echo "$NEXT_VERSION_FILES" | while IFS= read -r file; do
+                if [ -f "$file" ]; then
+                    sed -i "s/\[NEXT_VERSION\]/$new_version/g" "$file"
+                    echo "Updated [NEXT_VERSION] → $new_version in $file"
+                fi
+            done
+        fi
+    fi
 
     # Commit changes
     git add .
