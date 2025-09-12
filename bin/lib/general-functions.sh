@@ -29,6 +29,16 @@ function confirm() {
     done
 }
 
+# Simple step display functions
+function step_start() {
+    local message="$1"
+    printf "%s..." "$message"
+}
+
+function step_done() {
+    printf "Done! ✅\n"
+}
+
 # File existence check.
 function file_exists() {
     local file_path="$1"
