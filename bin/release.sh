@@ -13,7 +13,9 @@ set -e
 
 # Get the directory where this script is located.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Store the current working directory (where the user ran the command)
+USER_PROJECT_DIR="$(pwd)"
 
 # Source configuration if it exists.
 if [ -f "$SCRIPT_DIR/config/release.conf" ]; then
@@ -25,7 +27,7 @@ source "$SCRIPT_DIR/lib/general-functions.sh"
 source "$SCRIPT_DIR/lib/git-functions.sh"
 source "$SCRIPT_DIR/lib/wp-functions.sh"
 
-# Change to project root - but if we're in node_modules, use the actual project root.
-cd "$PROJECT_ROOT"
+# Stay in the user's project directory (don't change to wp-build-tools directory)
+cd "$USER_PROJECT_DIR"
 
 wp_create_release
