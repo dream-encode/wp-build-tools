@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Fix PROJECT_ROOT detection when in a WP plugin or theme.
+
 ## [0.5.1] - 2025-09-12
 * BUG: Bring everything in line with bash.
 
