@@ -228,10 +228,33 @@ function validate_wp_plugin_structure() {
 
 # Smart zip dispatcher that detects context and prompts for zip type
 function wp_zip() {
-    local zip_type_param="$1"
-    local quiet_mode="$2"
     CURRENT_DIR="$(pwd)"
     local TEMP_DIR=$(get_temp_dir)
+    local quiet_mode="false"
+    local zip_type_param=""
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --quiet)
+                quiet_mode="true"
+                shift
+                ;;
+            --for-install)
+                zip_type_param="--for-install"
+                shift
+                ;;
+            --for-git-updater)
+                zip_type_param="--for-git-updater"
+                shift
+                ;;
+            *)
+                echo "Invalid parameter: $1"
+                echo "Usage: wp_zip [--for-install|--for-git-updater] [--quiet]"
+                return 1
+                ;;
+        esac
+    done
 
     # Detect type
     IS_PLUGIN=false
@@ -286,11 +309,6 @@ function wp_zip() {
                     ;;
             esac
             ;;
-        *)
-            echo "Invalid parameter: $zip_type_param"
-            echo "Usage: wp_zip [--for-install|--for-git-updater]"
-            return 1
-            ;;
     esac
 
     # Compute default zip name (folder name)
@@ -319,7 +337,11 @@ function wp_zip() {
     if [ "$quiet_mode" != "true" ]; then
         step_start "[1/4] 📁 Copying files to temporary directory"
     fi
-    copy_folder "$CURRENT_DIR" "$COPY_DIR" true 2>/dev/null
+    if [ "$quiet_mode" = "true" ]; then
+        copy_folder "$CURRENT_DIR" "$COPY_DIR" --quiet 2>/dev/null
+    else
+        copy_folder "$CURRENT_DIR" "$COPY_DIR" 2>/dev/null
+    fi
     if [ "$quiet_mode" != "true" ]; then
         step_done
     fi
@@ -330,7 +352,11 @@ function wp_zip() {
     if [ "$quiet_mode" != "true" ]; then
         step_start "[2/4] 🏗️  Building for production"
     fi
-    build_for_production true
+    if [ "$quiet_mode" = "true" ]; then
+        build_for_production --quiet
+    else
+        build_for_production
+    fi
     if [ "$quiet_mode" != "true" ]; then
         step_done
     fi
@@ -339,7 +365,11 @@ function wp_zip() {
     if [ "$quiet_mode" != "true" ]; then
         step_start "[3/4] 📦 Creating ZIP archive"
     fi
-    zip_folder "$COPY_DIR" "$ZIP_FILENAME" "$ZIP_NAME" true
+    if [ "$quiet_mode" = "true" ]; then
+        zip_folder "$COPY_DIR" "$ZIP_FILENAME" "$ZIP_NAME" --quiet
+    else
+        zip_folder "$COPY_DIR" "$ZIP_FILENAME" "$ZIP_NAME"
+    fi
     if [ "$quiet_mode" != "true" ]; then
         step_done
     fi
@@ -423,7 +453,6 @@ function wp_plugin_bump_version() {
 # WordPress-specific release function - extends git_create_release with WP functionality
 function wp_create_release() {
     echo "🚀 Starting WordPress release process..."
-    echo ""
 
     # Set some vars for WP detection
     local CURRENT_DIR=$(pwd)
@@ -434,7 +463,7 @@ function wp_create_release() {
 
     # Step 1: Pre-release checks
     step_start "[1/6] 🔍 Running pre-release checks"
-    if ! wp_check_debugging_code; then
+    if ! wp_check_debugging_code --quiet; then
         printf "\n❌ Found debugging code in plugin. Please correct before releasing.\n"
         return 1
     fi
@@ -494,129 +523,17 @@ function wp_create_release() {
 
     # Step 4: Call the core git release function
     step_start "[4/6] 🔄 Running core release process"
-    local RELEASE_VERSION=$(git_create_release_quiet)
+    git_create_release_quiet --quiet
+    local git_exit_code=$?
 
     # If core release failed, exit
-    if [ $? -ne 0 ]; then
+    if [ $git_exit_code -ne 0 ]; then
         printf "\n❌ Core release process failed.\n"
         return 1
     fi
-    step_done
 
-    # Show version information after step 4
-    echo "✅ Release version: $RELEASE_VERSION"
-
-    # Exit now if not a WP plugin or theme with a release asset
-    if ! [ "$IS_WP_PLUGIN" = true ] && ! [ "$IS_WP_THEME" = true ]; then
-        echo ""
-        echo "✅ Non-WordPress project release completed!"
-        return 0
-    fi
-
-    # Ask if we want to create a zip to deploy WP plugins and themes
-    if ! wp_plugin_has_release_asset; then
-        echo ""
-        echo "ℹ️  This plugin/theme does not use a release asset. Exiting."
-        return 0
-    fi
-
-    # If this is a theme and a release workflow exists, skip local asset build
-    if [ "$IS_WP_THEME" = true ] && github_actions_github_actions_github_actions_release_workflow_exists; then
-        echo ""
-        echo "🔄 Release workflow detected (release.yml). Skipping local release asset build for theme."
-        echo "✅ WordPress theme release completed!"
-        return 0
-    fi
-
-    # Step 5: Create WordPress release asset
-    step_start "[5/6] 📦 Creating WordPress release asset"
-    local ZIP_FILE_PATH=$(wp_zip --for-git-updater true)
-
-# WordPress-specific release function - extends git_create_release with WP functionality
-function wp_create_release() {
-    echo "🚀 Starting WordPress release process..."
-    echo ""
-
-    # Set some vars for WP detection
-    local CURRENT_DIR=$(pwd)
-    local TEMP_DIR=$(get_temp_dir)
-    local BASENAME=$(basename "$CURRENT_DIR")
-    local PACKAGE_MANAGER=$(get_package_manager_for_project)
-    local CURRENT_VERSION=$(get_version_package_json)
-
-    # Step 1: Pre-release checks
-    step_start "[1/6] 🔍 Running pre-release checks"
-    if ! wp_check_debugging_code; then
-        printf "\n❌ Found debugging code in plugin. Please correct before releasing.\n"
-        return 1
-    fi
-    step_done
-
-    # Detect WordPress project types
-    local IS_WP_PLUGIN=false
-    local IS_WP_THEME=false
-    local IS_WP_BLOCK_PLUGIN=false
-
-    if [[ $PWD/ = */wp-content/plugins/* ]]; then
-        IS_WP_PLUGIN=true
-        # Check if this is specifically a block plugin
-        if is_wp_block_plugin; then
-            IS_WP_BLOCK_PLUGIN=true
-        fi
-    fi
-
-    if [[ $PWD/ = */wp-content/themes/* ]]; then
-        IS_WP_THEME=true
-    fi
-
-    # Step 2: Maybe update Action Scheduler library for WP plugins
-    if [ "$IS_WP_PLUGIN" = true ] && [ -d "libraries/action-scheduler" ]; then
-        step_start "[2/6] 📚 Updating Action Scheduler library"
-
-        # Check if the Action Scheduler remote exists
-        if ! git remote | grep -q "subtree-action-scheduler"; then
-            git remote add -f subtree-action-scheduler https://github.com/woocommerce/action-scheduler.git >/dev/null 2>&1
-        else
-            git fetch subtree-action-scheduler trunk >/dev/null 2>&1
-        fi
-
-        # Update the Action Scheduler subtree
-        git subtree pull --prefix libraries/action-scheduler subtree-action-scheduler trunk --squash >/dev/null 2>&1
-
-        step_done
-    else
-        step_start "[2/6] 📚 Checking Action Scheduler library"
-        # No Action Scheduler found, skip
-        step_done
-    fi
-
-    # Step 3: Maybe update POT file for WP plugins and themes
-    if [ "$IS_WP_PLUGIN" = true ] || [ "$IS_WP_THEME" = true ]; then
-        step_start "[3/6] 🌐 Updating translation files"
-        wp_plugin_update_pot >/dev/null 2>&1
-
-        git add languages/* >/dev/null 2>&1
-        gc "Updating POT" >/dev/null 2>&1
-        step_done
-    else
-        step_start "[3/6] 🌐 Checking translation files"
-        # Not a WP plugin/theme, skip
-        step_done
-    fi
-
-    # Step 4: Call the core git release function
-    step_start "[4/6] 🔄 Running core release process"
-    local RELEASE_VERSION=$(git_create_release_quiet)
-
-    # If core release failed, exit
-    if [ $? -ne 0 ]; then
-        printf "\n❌ Core release process failed.\n"
-        return 1
-    fi
-    step_done
-
-    # Show version information after step 4
-    echo "✅ Release version: $RELEASE_VERSION"
+    # Get the current version after the release process
+    local RELEASE_VERSION=$(get_version_package_json)
 
     # Exit now if not a WP plugin or theme with a release asset
     if ! [ "$IS_WP_PLUGIN" = true ] && ! [ "$IS_WP_THEME" = true ]; then
@@ -642,7 +559,7 @@ function wp_create_release() {
 
     # Step 5: Create WordPress release asset
     step_start "[5/6] 📦 Creating WordPress release asset"
-    local ZIP_FILE_PATH=$(wp_zip --for-git-updater true)
+    local ZIP_FILE_PATH=$(wp_zip --for-git-updater --quiet)
     local ZIP_FILE=$(basename "$ZIP_FILE_PATH")
     step_done
 
@@ -656,26 +573,8 @@ function wp_create_release() {
     echo "📋 Zip: $ZIP_FILE"
 
     # Do we want to trigger Git Remote Updater to force update the plugin/theme now?
-    confirm "Do you want to remote update the plugin/theme to this new version now?"
-    if [ $? == 0 ]; then
-        wp_update_plugin_via_git_remote_updater
-    fi
-}
-    local ZIP_FILE=$(basename "$ZIP_FILE_PATH")
-    step_done
-
-    # Step 6: Upload the asset to the release
-    step_start "[6/6] ⬆️  Uploading release asset to GitHub"
-    gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" >/dev/null 2>&1
-    step_done
-
-    echo ""
-    echo "🎊 SUCCESS: WordPress release v$RELEASE_VERSION created with asset!"
-    echo "📋 Zip: $ZIP_FILE"
-
-    # Do we want to trigger Git Remote Updater to force update the plugin/theme now?
-    confirm "Do you want to remote update the plugin/theme to this new version now?"
-    if [ $? == 0 ]; then
-        wp_update_plugin_via_git_remote_updater
-    fi
+    # confirm "Do you want to remote update the plugin/theme to this new version now?"
+    # if [ $? == 0 ]; then
+    #     wp_update_plugin_via_git_remote_updater
+    # fi
 }

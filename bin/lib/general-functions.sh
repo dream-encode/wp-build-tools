@@ -157,6 +157,85 @@ function current_dir_has_npm_build_script() {
     false
 }
 
+# Check which build script is available and return the preferred one
+function get_available_build_script() {
+    if [ ! -f "package.json" ]; then
+        return 1
+    fi
+
+    # Check for production script first (preferred)
+    if jq -e '.scripts.production' package.json >/dev/null 2>&1; then
+        echo "production"
+        return 0
+    fi
+
+    # Check for build script as fallback
+    if jq -e '.scripts.build' package.json >/dev/null 2>&1; then
+        echo "build"
+        return 0
+    fi
+
+    return 1
+}
+
+#Changelog stuff.
+function changelog_exists() {
+    if file_exists "CHANGELOG.md"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function changelog_check_next_version() {
+    if changelog_exists; then
+        # Changelog exists, proceed with version check
+        CHANGELOG_TOP_VERSION=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[(.*)\].*/\1/')
+
+        # Check if the top entry is NEXT_VERSION - UNRELEASED format
+        if [ "$CHANGELOG_TOP_VERSION" = "NEXT_VERSION" ]; then
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+function changelog_add_next_version_template() {
+    local CURRENT_VERSION=$(get_version_package_json)
+    local QUIET_MODE="${1:-false}"
+
+    # Add template changelog entry if changelog file exists.
+    if changelog_exists; then
+        if [ "$QUIET_MODE" != "true" ]; then
+            echo "Adding template changelog entry..."
+        fi
+
+        # Only modify CHANGELOG.md, use anchored pattern to avoid .sh files
+        sed -i "s/^## \[$CURRENT_VERSION\]/## [NEXT_VERSION] - [UNRELEASED]\n* BUG: Example fix description.\n\n## [$CURRENT_VERSION]/" "CHANGELOG.md"
+
+        if [ "$QUIET_MODE" != "true" ]; then
+            echo "✅ Template changelog entry added to CHANGELOG.md"
+        fi
+    fi
+}
+
+function changelog_update_current_version() {
+    local CURRENT_VERSION=$(get_version_package_json)
+
+    # Update changelog in development branch before release
+    if changelog_exists; then
+        local CURRENT_DATE=$(date +%Y-%m-%d)
+
+        # Replace [NEXT_VERSION] with the actual version and today's date
+        if grep -q "## \[NEXT_VERSION\]" "CHANGELOG.md"; then
+            sed -i "s/^## \[NEXT_VERSION\] - \[UNRELEASED\]/## [$CURRENT_VERSION] - $CURRENT_DATE/" "CHANGELOG.md"
+            git add CHANGELOG.md >/dev/null 2>&1
+            git commit -m "Update changelog for v$CURRENT_VERSION" >/dev/null 2>&1
+        fi
+    fi
+}
+
 # Interactive menu selection with cursor support
 function interactive_menu_select() {
     local prompt="$1"
@@ -417,9 +496,38 @@ function package_version_bump_auto() {
 
 # Copy folder with configurable exclusions using robocopy or rsync
 function copy_folder() {
-    local source_dir="$1"
-    local dest_dir="$2"
-    local quiet_mode="${3:-false}"
+    local source_dir=""
+    local dest_dir=""
+    local quiet_mode="false"
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --quiet)
+                quiet_mode="true"
+                shift
+                ;;
+            *)
+                if [ -z "$source_dir" ]; then
+                    source_dir="$1"
+                elif [ -z "$dest_dir" ]; then
+                    dest_dir="$1"
+                else
+                    echo "Error: Too many arguments for copy_folder"
+                    echo "Usage: copy_folder <source_dir> <dest_dir> [--quiet]"
+                    return 1
+                fi
+                shift
+                ;;
+        esac
+    done
+
+    # Validate required arguments
+    if [ -z "$source_dir" ] || [ -z "$dest_dir" ]; then
+        echo "Error: Missing required arguments for copy_folder"
+        echo "Usage: copy_folder <source_dir> <dest_dir> [--quiet]"
+        return 1
+    fi
 
     # Default exclusions list
     local default_exclusions=(
@@ -529,10 +637,48 @@ function copy_folder() {
 
 # Create ZIP file with configurable exclusions
 function zip_folder() {
-    local source_dir="$1"
-    local zip_filename="$2"
-    local zip_name="$3"
-    local quiet_mode="${4:-false}"
+    local source_dir=""
+    local zip_filename=""
+    local zip_name=""
+    local quiet_mode="false"
+    local arg_count=0
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --quiet)
+                quiet_mode="true"
+                shift
+                ;;
+            *)
+                arg_count=$((arg_count + 1))
+                case $arg_count in
+                    1)
+                        source_dir="$1"
+                        ;;
+                    2)
+                        zip_filename="$1"
+                        ;;
+                    3)
+                        zip_name="$1"
+                        ;;
+                    *)
+                        echo "Error: Too many arguments for zip_folder"
+                        echo "Usage: zip_folder <source_dir> <zip_filename> <zip_name> [--quiet]"
+                        return 1
+                        ;;
+                esac
+                shift
+                ;;
+        esac
+    done
+
+    # Validate required arguments
+    if [ -z "$source_dir" ] || [ -z "$zip_filename" ] || [ -z "$zip_name" ]; then
+        echo "Error: Missing required arguments for zip_folder"
+        echo "Usage: zip_folder <source_dir> <zip_filename> <zip_name> [--quiet]"
+        return 1
+    fi
 
     # Check if either zip or 7z is available
     if ! command -v zip >/dev/null 2>&1 && ! command -v 7z.exe >/dev/null 2>&1; then
@@ -604,7 +750,8 @@ function zip_folder() {
         default_exclusions+=("./vendor")
     fi
 
-    if is_wp_block_plugin; then
+    # Check if is_wp_block_plugin function exists and call it if available
+    if command -v is_wp_block_plugin >/dev/null 2>&1 && is_wp_block_plugin; then
         default_exclusions+=("./src")
     fi
 
@@ -618,7 +765,10 @@ function zip_folder() {
         if [ "$quiet_mode" != "true" ]; then
             echo "Using zip command..."
         fi
-        cd "$(get_temp_dir)"
+
+        # Get the parent directory of the source directory
+        local source_parent=$(dirname "$source_dir")
+        cd "$source_parent"
 
         local zip_excludes=()
         for exclusion in "${exclusions[@]}"; do
@@ -674,7 +824,22 @@ function zip_folder() {
 
 # Build project for production with package manager detection and dependency management
 function build_for_production() {
-    local quiet_mode="${1:-false}"
+    local quiet_mode="false"
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --quiet)
+                quiet_mode="true"
+                shift
+                ;;
+            *)
+                echo "Error: Unknown argument '$1' for build_for_production"
+                echo "Usage: build_for_production [--quiet]"
+                return 1
+                ;;
+        esac
+    done
 
     if [ "$quiet_mode" != "true" ]; then
         echo "🏗️  Building project for production..."
