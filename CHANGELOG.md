@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.5.0] - 2025-09-12
+* BUG: Fix some bugs.  Ready for more testing in a plugin.
+
 ## [0.4.2.1] - 2025-09-12
 * BUG: Example fix description.
 
