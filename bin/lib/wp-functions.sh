@@ -2,10 +2,36 @@
 
 # WordPress-specific utility functions for release script
 # Copied from wp.bashrc
-
-# Check for debugging code in the plugin
 function wp_check_debugging_code() {
-    echo "Checking for debugging code..."
+    local quiet_mode="false"
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --quiet)
+                quiet_mode="true"
+                shift
+                ;;
+            --for-git-updater|--for-install)
+                zip_type_param="$1"
+                shift
+                ;;
+            *)
+                if [ -z "$zip_type_param" ]; then
+                    zip_type_param="$1"
+                else
+                    echo "❌ Error: Unknown argument '$1' for wp_zip"
+                    echo "Usage: wp_zip [--for-git-updater|--for-install] [--quiet]"
+                    return 1
+                fi
+                shift
+                ;;
+        esac
+    done
+
+    if [ "$quiet_mode" != "true" ]; then
+        echo "Checking for debugging code..."
+    fi
 
     # Define debugging patterns to search for
     local debug_patterns=(
@@ -48,6 +74,24 @@ function wp_check_debugging_code() {
 
     echo ""
     echo "Total debugging statements found: $total_count"
+    return 1
+}
+
+# Returns the WordPress root directory by walking up from the given path (or $PWD)
+function wp_find_wp_root() {
+    local dir="${1:-$(pwd)}"
+    while true; do
+        if [ -f "$dir/wp-config.php" ]; then
+            echo "$dir"
+            return 0
+        fi
+        local parent
+        parent="$(dirname "$dir")"
+        if [ "$parent" = "$dir" ] || [ -z "$parent" ]; then
+            break
+        fi
+        dir="$parent"
+    done
     return 1
 }
 
@@ -125,67 +169,7 @@ function wp_plugin_filename() {
     echo "$(wp_get_plugin_name).php"
 }
 
-# Bump version in WordPress plugin/theme main file
-function wp_plugin_bump_version() {
-    local NEW_VERSION="$1"
-    local PLUGIN_NAME="$(wp_get_plugin_name)"
-    local FILENAME="$(wp_plugin_filename)"
 
-    # Main plugin file.
-    if [ ! -f "$FILENAME" ]; then
-        echo "Warning: Main plugin file $FILENAME not found. Skipping PHP version update."
-        return 0
-    fi
-
-    # Plugin header.
-    if grep -q "Version:" "$FILENAME"; then
-        sed -i "s/Version:.*$/Version: $NEW_VERSION/" "$FILENAME"
-        echo "Updated version in $FILENAME header."
-    fi
-
-    # Version constant.
-    local PLUGIN_CONSTANT=$(echo "$PLUGIN_NAME" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
-
-    if grep -q "define.*${PLUGIN_CONSTANT}_VERSION" "$FILENAME"; then
-        sed -i "s/define.*${PLUGIN_CONSTANT}_VERSION.*$/define( '${PLUGIN_CONSTANT}_VERSION', '$NEW_VERSION' );/" "$FILENAME"
-        echo "Updated ${PLUGIN_CONSTANT}_VERSION constant in $FILENAME."
-    fi
-
-    # Constants files.
-    local CONSTANTS_FILES=()
-
-    if [ -f "includes/${PLUGIN_NAME}-constants.php" ]; then
-        CONSTANTS_FILES+=("includes/${PLUGIN_NAME}-constants.php")
-    fi
-    if [ -f "inc/constants.php" ]; then
-        CONSTANTS_FILES+=("inc/constants.php")
-    fi
-
-    for CONSTANTS_FILE in "${CONSTANTS_FILES[@]}"; do
-        if [ -f "$CONSTANTS_FILE" ]; then
-            local PLUGIN_CONSTANT=$(echo "$PLUGIN_NAME" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
-
-            if grep -q "define.*${PLUGIN_CONSTANT}_PLUGIN_VERSION" "$CONSTANTS_FILE"; then
-                sed -i "s/define.*${PLUGIN_CONSTANT}_PLUGIN_VERSION.*$/define( '${PLUGIN_CONSTANT}_PLUGIN_VERSION', '$NEW_VERSION' );/" "$CONSTANTS_FILE"
-                echo "Updated ${PLUGIN_CONSTANT}_PLUGIN_VERSION constant in $CONSTANTS_FILE."
-            fi
-        fi
-    done
-
-    # Block.json files.
-    local BLOCK_JSON_FILES=$(find . -type f -name "block.json" -not -path "./node_modules/*" -not -path "./vendor/*")
-
-    if [ -n "$BLOCK_JSON_FILES" ]; then
-        echo "Updating version in block.json files..."
-
-        while IFS= read -r BLOCK_FILE; do
-            if [ -f "$BLOCK_FILE" ]; then
-                jq --arg v "$NEW_VERSION" '.version = $v' "$BLOCK_FILE" > "$BLOCK_FILE.tmp" && mv "$BLOCK_FILE.tmp" "$BLOCK_FILE"
-                echo "Updated version in $BLOCK_FILE."
-            fi
-        done <<< "$BLOCK_JSON_FILES"
-    fi
-}
 
 # Get current plugin version from main PHP file
 function wp_plugin_current_version() {
