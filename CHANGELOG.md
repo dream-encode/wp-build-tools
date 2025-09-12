@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.4.0] - 2025-09-12
 * ENH: Import latest updates from bash_includes.
 

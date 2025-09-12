@@ -99,6 +99,17 @@ function github_actions_github_actions_release_workflow_exists() {
     return 1
 }
 
+function github_create_release() {
+    VERSION=$1
+
+    if changelog_exists; then
+        local RELEASE_NOTES=$(extract_version_updates_from_changelog "$VERSION")
+        gh release create "v$VERSION" -n "$RELEASE_NOTES" -t "v$VERSION" >/dev/null 2>&1
+    else
+        gh release create "v$VERSION" >/dev/null 2>&1
+    fi
+}
+
 # Validate git setup before release
 function validate_git_setup() {
     echo "🔍 Validating git setup..."
@@ -185,16 +196,8 @@ function git_create_simple_release() {
     # Tag the version
     git_tag_release "$CURRENT_VERSION"
 
-    # Check if a changelog exists
-    local CHANGELOG_EXISTS=$(changelog_exists)
-
-    # Check if changelog is present
-    if $CHANGELOG_EXISTS; then
-        local RELEASE_NOTES=$(extract_version_updates_from_changelog "$CURRENT_VERSION")
-        gh release create "v$CURRENT_VERSION" -n "$RELEASE_NOTES" -t "v$CURRENT_VERSION"
-    else
-        gh release create "v$CURRENT_VERSION"
-    fi
+    # Create GitHub release
+    github_create_release "$CURRENT_VERSION"
 
     echo "Version $CURRENT_VERSION release created!"
 }
@@ -343,12 +346,7 @@ function git_create_release() {
 
     # Create GitHub release.
     echo "🎉 Creating GitHub release..."
-    if changelog_exists; then
-        local RELEASE_NOTES=$(extract_version_updates_from_changelog "$CURRENT_VERSION")
-        gh release create "v$CURRENT_VERSION" -n "$RELEASE_NOTES" -t "v$CURRENT_VERSION"
-    else
-        gh release create "v$CURRENT_VERSION"
-    fi
+    github_create_release "$CURRENT_VERSION"
 
     git_post_create_release "$CURRENT_VERSION" "$CURRENT_BRANCH"
 
@@ -481,12 +479,7 @@ function git_create_release_quiet() {
     git push -q -u origin "v$CURRENT_VERSION" >/dev/null 2>&1
 
     # Create GitHub release (quietly)
-    if changelog_exists; then
-        local RELEASE_NOTES=$(extract_version_updates_from_changelog "$CURRENT_VERSION")
-        gh release create "v$CURRENT_VERSION" -n "$RELEASE_NOTES" -t "v$CURRENT_VERSION" >/dev/null 2>&1
-    else
-        gh release create "v$CURRENT_VERSION" >/dev/null 2>&1
-    fi
+    github_create_release "$CURRENT_VERSION"
 
     # Post-release cleanup (quietly)
     git checkout main >/dev/null 2>&1
@@ -589,17 +582,8 @@ function git_create_simple_release() {
     # Tag the version.
     git_tag_release "$CURRENT_VERSION"
 
-    # Check if a changelog exists.
-    CHANGELOG_EXISTS=$(changelog_exists)
-
-    # Check if changelog is present.
-    if $CHANGELOG_EXISTS;
-    then
-        RELEASE_NOTES=$(extract_version_updates_from_changelog "$CURRENT_VERSION")
-        gh release create "v$CURRENT_VERSION" -n "$RELEASE_NOTES" -t "v$CURRENT_VERSION"
-    else
-        gh release create "v$CURRENT_VERSION"
-    fi
+    # Create release on GitHub.
+    github_create_release "$CURRENT_VERSION"
 
     git_post_create_release "$CURRENT_VERSION" "$CURRENT_BRANCH"
 }

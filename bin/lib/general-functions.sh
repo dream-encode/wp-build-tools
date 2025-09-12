@@ -157,6 +157,64 @@ function current_dir_has_npm_build_script() {
     false
 }
 
+#Changelog stuff.
+function changelog_exists() {
+    if file_exists "CHANGELOG.md"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function changelog_check_next_version() {
+    if changelog_exists; then
+        # Changelog exists, proceed with version check
+        CHANGELOG_TOP_VERSION=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[(.*)\].*/\1/')
+
+        # Check if the top entry is NEXT_VERSION - UNRELEASED format
+        if [ "$CHANGELOG_TOP_VERSION" = "NEXT_VERSION" ]; then
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+function changelog_add_next_version_template() {
+    local CURRENT_VERSION=$(get_version_package_json)
+    local QUIET_MODE="${1:-false}"
+
+    # Add template changelog entry if changelog file exists.
+    if changelog_exists; then
+        if [ "$QUIET_MODE" != "true" ]; then
+            echo "Adding template changelog entry..."
+        fi
+
+        # Only modify CHANGELOG.md, use anchored pattern to avoid .sh files
+        sed -i "s/^## \[$CURRENT_VERSION\]/## [NEXT_VERSION] - [UNRELEASED]\n* BUG: Example fix description.\n\n## [$CURRENT_VERSION]/" "CHANGELOG.md"
+
+        if [ "$QUIET_MODE" != "true" ]; then
+            echo "✅ Template changelog entry added to CHANGELOG.md"
+        fi
+    fi
+}
+
+function changelog_update_current_version() {
+    local CURRENT_VERSION=$(get_version_package_json)
+
+    # Update changelog in development branch before release
+    if changelog_exists; then
+        local CURRENT_DATE=$(date +%Y-%m-%d)
+
+        # Replace [NEXT_VERSION] with the actual version and today's date
+        if grep -q "## \[NEXT_VERSION\]" "CHANGELOG.md"; then
+            sed -i "s/^## \[NEXT_VERSION\] - \[UNRELEASED\]/## [$CURRENT_VERSION] - $CURRENT_DATE/" "CHANGELOG.md"
+            git add CHANGELOG.md >/dev/null 2>&1
+            git commit -m "Update changelog for v$CURRENT_VERSION" >/dev/null 2>&1
+        fi
+    fi
+}
+
 # Interactive menu selection with cursor support
 function interactive_menu_select() {
     local prompt="$1"
