@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* ENH: More abstraction.
+* ENH: More changes from bash.
 
 ## [0.4.0] - 2025-09-12
 * ENH: Import latest updates from bash_includes.
