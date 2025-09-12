@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.4.2] - 2025-09-12
+* BUG: Example fix description.
+
 ## [0.4.1] - 2025-09-12
 * ENH: More changes from bash.
 
