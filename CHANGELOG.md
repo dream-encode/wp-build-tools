@@ -1,7 +1,9 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* ENH: Add optional flags for --check-tools and --test.
+* ENH: Add postinstall.js to automatically configure projects.
+* ENH: Add copy_folder fallbacks.
 
 ## [0.5.2] - 2025-09-12
 * BUG: Fix PROJECT_ROOT detection when in a WP plugin or theme.
