@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.6.3] - 2025-09-13
 * BUG: NPM doesn't like hotfix versions.
 
 ## [0.6.2.1] - 2025-09-13
