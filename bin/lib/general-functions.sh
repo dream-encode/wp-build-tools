@@ -945,74 +945,107 @@ function build_for_production() {
         PACKAGE_MANAGER=""
     fi
 
-    # Clean install and build with detected package manager
+    # Check if we have build scripts that need to run
+    local has_build_script=false
+    local build_script=""
     if [ -n "$PACKAGE_MANAGER" ]; then
+        if jq -e '.scripts.production' package.json >/dev/null 2>&1; then
+            has_build_script=true
+            build_script="production"
+        elif jq -e '.scripts.build' package.json >/dev/null 2>&1; then
+            has_build_script=true
+            build_script="build"
+        fi
+    fi
+
+    # Check if we have production dependencies
+    local has_production_deps=false
+    if [ -f "package.json" ] && command -v jq >/dev/null 2>&1; then
+        local deps_length=$(jq '.dependencies | length' package.json 2>/dev/null || echo "0")
+        if [[ $deps_length -gt 0 ]]; then
+            has_production_deps=true
+        fi
+    fi
+
+    # Install dependencies and build if needed
+    if [ -n "$PACKAGE_MANAGER" ] && [ "$has_build_script" = true ]; then
         if [ "$quiet_mode" != "true" ]; then
             echo "📦 Using package manager: $PACKAGE_MANAGER"
+            echo "🔨 Build script detected: $build_script"
         fi
 
         if [ "$PACKAGE_MANAGER" = "yarn" ]; then
             if [ "$quiet_mode" != "true" ]; then
-                echo "🧹 Clean installing dependencies with yarn..."
+                echo "🧹 Installing dependencies with yarn..."
                 yarn --silent install --frozen-lockfile
             else
                 yarn --silent install --frozen-lockfile >/dev/null 2>&1
             fi
 
             if [ "$quiet_mode" != "true" ]; then
-                echo "🔨 Running production build with yarn..."
+                echo "🔨 Running $build_script build with yarn..."
             fi
             if [ "$quiet_mode" = "true" ]; then
-                yarn --silent run build >/dev/null 2>&1 || yarn --silent run production >/dev/null 2>&1 || true
+                yarn --silent run "$build_script" >/dev/null 2>&1
             else
-                if yarn --silent run build >/dev/null 2>&1; then
-                    echo "✅ Yarn build completed successfully"
-                elif yarn --silent run production >/dev/null 2>&1; then
-                    echo "✅ Yarn production build completed successfully"
+                if yarn --silent run "$build_script" >/dev/null 2>&1; then
+                    echo "✅ Yarn $build_script build completed successfully"
                 else
-                    echo "⚠️  No build or production script found in package.json"
+                    echo "❌ Yarn $build_script build failed"
+                    return 1
                 fi
             fi
         else
             if [ "$quiet_mode" != "true" ]; then
-                echo "🧹 Clean installing dependencies with npm..."
+                echo "🧹 Installing dependencies with npm..."
                 npm --silent ci
             else
                 npm --silent ci >/dev/null 2>&1
             fi
 
             if [ "$quiet_mode" != "true" ]; then
-                echo "🔨 Running production build with npm..."
+                echo "🔨 Running $build_script build with npm..."
             fi
             if [ "$quiet_mode" = "true" ]; then
-                npm run --silent production >/dev/null 2>&1 || npm run --silent build >/dev/null 2>&1 || true
+                npm run --silent "$build_script" >/dev/null 2>&1
             else
-                if npm run --silent production >/dev/null 2>&1; then
-                    echo "✅ NPM build completed successfully"
-                elif npm run --silent build >/dev/null 2>&1; then
-                    echo "✅ NPM production build completed successfully"
+                if npm run --silent "$build_script" >/dev/null 2>&1; then
+                    echo "✅ NPM $build_script build completed successfully"
                 else
-                    echo "⚠️  No build or production script found in package.json"
+                    echo "❌ NPM $build_script build failed"
+                    return 1
                 fi
             fi
         fi
 
-        # Prune dev dependencies after build
-        if [ "$quiet_mode" != "true" ]; then
-            echo "🧹 Pruning development dependencies..."
-        fi
-        if [ "$PACKAGE_MANAGER" = "yarn" ]; then
-            if [ "$quiet_mode" = "true" ]; then
-                yarn --silent install --production=true >/dev/null 2>&1 || true
-            else
-                yarn --silent install --production=true || true
+        # Clean up node_modules if no production dependencies
+        if [ "$has_production_deps" = false ]; then
+            if [ "$quiet_mode" != "true" ]; then
+                echo "🧹 No production dependencies found, removing node_modules..."
             fi
+            rm -rf node_modules
         else
-            if [ "$quiet_mode" = "true" ]; then
-                npm --silent prune --omit=dev >/dev/null 2>&1
-            else
-                npm --silent prune --omit=dev
+            # Prune dev dependencies after build
+            if [ "$quiet_mode" != "true" ]; then
+                echo "🧹 Pruning development dependencies..."
             fi
+            if [ "$PACKAGE_MANAGER" = "yarn" ]; then
+                if [ "$quiet_mode" = "true" ]; then
+                    yarn --silent install --production=true >/dev/null 2>&1 || true
+                else
+                    yarn --silent install --production=true || true
+                fi
+            else
+                if [ "$quiet_mode" = "true" ]; then
+                    npm --silent prune --omit=dev >/dev/null 2>&1
+                else
+                    npm --silent prune --omit=dev
+                fi
+            fi
+        fi
+    elif [ -n "$PACKAGE_MANAGER" ]; then
+        if [ "$quiet_mode" != "true" ]; then
+            echo "⚠️  No build scripts found in package.json, skipping npm build"
         fi
     fi
 
