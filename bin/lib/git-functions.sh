@@ -93,7 +93,7 @@ function check_gh_cli() {
     return 0
 }
 
-function github_actions_github_actions_release_workflow_exists() {
+function github_actions_release_workflow_exists() {
     # Consider common release workflow names
     if [ -f .github/workflows/release.yml ] || [ -f .github/workflows/release.yaml ]; then
         return 0
