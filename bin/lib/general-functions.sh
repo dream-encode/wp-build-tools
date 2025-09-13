@@ -356,25 +356,12 @@ function package_version_bump_interactive() {
         CHANGELOG_TOP_ENTRY=$(grep -m 1 "## \[" CHANGELOG.md | sed -E 's/## \[([^]]*)\].*/\1/')
 
         if [ "$CHANGELOG_TOP_ENTRY" = "NEXT_VERSION" ]; then
-            # Update NEXT_VERSION entry with version and current date.
-            CURRENT_DATE=$(date +%Y-%m-%d)
-
-            # Handle both old format [NEXT_VERSION] and new format [NEXT_VERSION] - [UNRELEASED]
-            # Only modify CHANGELOG.md, exclude .sh files
-            if grep -q "## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]" CHANGELOG.md; then
-                sed_inplace "0,/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$NEW_VERSION] - $CURRENT_DATE/" CHANGELOG.md
-            else
-                sed_inplace "0,/^## \\[NEXT_VERSION\\]/ s/^## \\[NEXT_VERSION\\].*$/## [$NEW_VERSION] - $CURRENT_DATE/" CHANGELOG.md
-            fi
-            echo "Updated NEXT_VERSION entry in CHANGELOG.md to [$NEW_VERSION] - $CURRENT_DATE."
-
-            # Commit the updated changelog.
-            git add CHANGELOG.md
-            gc "Update CHANGELOG.md for release $NEW_VERSION"
+            # NEXT_VERSION template found - this is good, changelog will be updated later in the release process
+            echo "✅ Found [NEXT_VERSION] template in CHANGELOG.md - ready for release"
         else
             echo "WARNING: No [NEXT_VERSION] entry found at top of CHANGELOG.md"
             echo "   Top entry is: [$CHANGELOG_TOP_ENTRY]"
-            echo "   Expected: [NEXT_VERSION] or [NEXT_VERSION] - [UNRELEASED]"
+            echo "   Expected: [NEXT_VERSION] - [UNRELEASED]"
 
             if ! confirm "Continue without updating changelog?"; then
                 echo "Release cancelled. Please add a [NEXT_VERSION] entry to CHANGELOG.md"

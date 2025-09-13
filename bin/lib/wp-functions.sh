@@ -404,7 +404,7 @@ function wp_plugin_bump_version() {
 
     # Update version in plugin header
     if grep -q "Version:" "$FILENAME"; then
-        sed_inplace "s/Version:[ \t]*[0-9.]*/Version:       $NEW_VERSION/" "$FILENAME"
+        sed_inplace "s/\(Version:[ \t]*\)[0-9.]*/\1$NEW_VERSION/" "$FILENAME"
         echo "Updated version in $FILENAME header."
     fi
 
@@ -588,7 +588,7 @@ function wp_create_release() {
 }
 
 function wp_post_create_release() {
-    git checkout development
+    git checkout development >/dev/null 2>&1
 
     # Add new [NEXT_VERSION] template when back on development branch.
     changelog_add_next_version_template --quiet
