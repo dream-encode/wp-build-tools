@@ -1,6 +1,10 @@
 # Changelog
 
-## [] - 2025-09-13
+## [0.6.1] - 2025-09-13
+* ENH: Add automatic package.json setup functionality.
+* BUG: Fix changelog version replacement bug.
+
+## [0.6.0] - 2025-09-13
 * ENH: Add optional flags for --check-tools and --test.
 * ENH: Add postinstall.js to automatically configure projects.
 * ENH: Add copy_folder fallbacks.

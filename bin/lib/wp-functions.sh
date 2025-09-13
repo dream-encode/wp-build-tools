@@ -442,6 +442,7 @@ function wp_plugin_bump_version() {
 
 # WordPress-specific release function - extends git_create_release with WP functionality
 function wp_create_release() {
+    local version_type="$1"
     echo "🚀 Starting WordPress release process..."
 
     # Set some vars for WP detection
@@ -513,7 +514,11 @@ function wp_create_release() {
 
     # Step 4: Call the core git release function
     step_start "[4/6] 🔄 Running core release process"
-    git_create_release_quiet --quiet
+    if [ -n "$version_type" ]; then
+        git_create_release_quiet "$version_type" --quiet
+    else
+        git_create_release_quiet --quiet
+    fi
     local git_exit_code=$?
 
     # If core release failed, exit

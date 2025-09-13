@@ -106,8 +106,8 @@ yarn release
    - Updates POT files using WP-CLI (if available)
 
 5. **Changelog management**
-   - Looks for "[NEXT_VERSION] - [UNRELEASED]" entry at top of CHANGELOG.md
-   - Replaces "[NEXT_VERSION] - [UNRELEASED]" with "[X.X.X.X] - YYYY-MM-DD" format
+   - Looks for "0.6.1 - [UNRELEASED]" entry at top of CHANGELOG.md
+   - Replaces "0.6.1 - [UNRELEASED]" with "[X.X.X.X] - YYYY-MM-DD" format
 
 6. **Git operations**
    - Commits version bump changes
@@ -181,10 +181,10 @@ To enable ZIP asset creation, add this line to your main plugin file header:
 
 ### Changelog Format
 
-The script expects a `CHANGELOG.md` file in Keep a Changelog format with an "[NEXT_VERSION] - [UNRELEASED]" entry at the top:
+The script expects a `CHANGELOG.md` file in Keep a Changelog format with an "0.6.1 - [UNRELEASED]" entry at the top:
 
 ```markdown
-## [NEXT_VERSION] - [UNRELEASED]
+## 0.6.1 - [UNRELEASED]
 * Added new feature
 * Fixed bug
 
@@ -192,7 +192,7 @@ The script expects a `CHANGELOG.md` file in Keep a Changelog format with an "[NE
 * Initial release
 ```
 
-During release, "[NEXT_VERSION] - [UNRELEASED]" will be automatically replaced with the version and date:
+During release, "0.6.1 - [UNRELEASED]" will be automatically replaced with the version and date:
 
 ```markdown
 ## [1.1.0] - 2024-01-20
@@ -203,7 +203,7 @@ During release, "[NEXT_VERSION] - [UNRELEASED]" will be automatically replaced w
 * Initial release
 ```
 
-Then, a new "[NEXT_VERSION] - [UNRELEASED]" entry will be added at the top for the next release.
+Then, a new "0.6.1 - [UNRELEASED]" entry will be added at the top for the next release.
 
 ## Troubleshooting
 
