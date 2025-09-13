@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.6.7] - 2025-09-13
 * BUG: Don't add the NEXT_VERSION template until after the release asset is built.
 
 ## [0.6.6.2] - 2025-09-13
