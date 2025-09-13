@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.6.2] - 2025-09-13
 * BUG: Fix version bump and GitHub release issues with empty version variables.
 
 ## [0.6.1] - 2025-09-13
