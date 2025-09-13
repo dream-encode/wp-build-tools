@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.6.6] - 2025-09-13
 * BUG: Fix spacing in version replacement.
 
 ## [0.6.5] - 2025-09-13
