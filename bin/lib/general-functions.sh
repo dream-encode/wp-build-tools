@@ -210,7 +210,7 @@ function changelog_add_next_version_template() {
         fi
 
         # Only modify CHANGELOG.md, use anchored pattern to avoid .sh files
-        sed_inplace "s/^## \[$CURRENT_VERSION\]/## [NEXT_VERSION] - [UNRELEASED]\n* BUG: Example fix description.\n\n## [$CURRENT_VERSION]/" "CHANGELOG.md"
+        sed_inplace "s/^## \[$CURRENT_VERSION\]\(.*\)/## [NEXT_VERSION] - [UNRELEASED]\n* BUG: Example fix description.\n\n## [$CURRENT_VERSION]\1/" "CHANGELOG.md"
 
         if [ "$QUIET_MODE" != "true" ]; then
             echo "✅ Template changelog entry added to CHANGELOG.md"
@@ -541,6 +541,7 @@ function package_version_bump_auto() {
             --exclude="*.wav" \
             --exclude="*.lock" \
             --exclude="*.sh" \
+            --exclude="CHANGELOG.md" \
             2>/dev/null || true)
 
         if [ -n "$NEXT_VERSION_FILES" ]; then
