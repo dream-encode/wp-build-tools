@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [] - 2025-09-13
 * ENH: Add optional flags for --check-tools and --test.
 * ENH: Add postinstall.js to automatically configure projects.
 * ENH: Add copy_folder fallbacks.
