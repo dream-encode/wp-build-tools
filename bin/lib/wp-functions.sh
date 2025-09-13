@@ -135,11 +135,15 @@ function wp_plugin_has_release_asset() {
         PLUGIN_FILENAME="max-marine-electronics-warehouse-operations.php"
     fi
 
-    if grep -q "Release Asset:     true" "$PLUGIN_FILENAME"; then
-        return
+    if [ ! -f "$PLUGIN_FILENAME" ]; then
+        return 1
     fi
 
-    false
+    if grep -q "Release Asset:.*true" "$PLUGIN_FILENAME"; then
+        return 0
+    fi
+
+    return 1
 }
 
 # Update plugin via Git Remote Updater (simplified version)
