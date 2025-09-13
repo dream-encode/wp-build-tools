@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.5.2] - 2025-09-12
 * BUG: Fix PROJECT_ROOT detection when in a WP plugin or theme.
 

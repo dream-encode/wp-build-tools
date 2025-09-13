@@ -1,6 +1,12 @@
 #!/bin/bash
 
-# General utility functions for release script.
+# General utility functions for release script
+
+# Source platform utilities if not already loaded
+if ! command -v get_platform >/dev/null 2>&1; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$SCRIPT_DIR/platform-utils.sh"
+fi
 # Copied from general-functions.bashrc.
 
 # Color helper function for better terminal compatibility.
@@ -37,21 +43,6 @@ function step_start() {
 
 function step_done() {
     printf "Done! ✅\n"
-}
-
-# File existence check.
-function file_exists() {
-    local file_path="$1"
-
-    if [ ! -f "$file_path" ]; then
-        return 1
-    fi
-
-    return 0
-}
-
-function get_temp_dir() {
-    echo "$HOME/tmp"
 }
 
 # Extract version updates from changelog for a specific version.
@@ -219,7 +210,7 @@ function changelog_add_next_version_template() {
         fi
 
         # Only modify CHANGELOG.md, use anchored pattern to avoid .sh files
-        sed -i "s/^## \[$CURRENT_VERSION\]/## [NEXT_VERSION] - [UNRELEASED]\n* BUG: Example fix description.\n\n## [$CURRENT_VERSION]/" "CHANGELOG.md"
+        sed_inplace "s/^## \[$CURRENT_VERSION\]/## [NEXT_VERSION] - [UNRELEASED]\n* BUG: Example fix description.\n\n## [$CURRENT_VERSION]/" "CHANGELOG.md"
 
         if [ "$QUIET_MODE" != "true" ]; then
             echo "✅ Template changelog entry added to CHANGELOG.md"
@@ -236,7 +227,7 @@ function changelog_update_current_version() {
 
         # Replace [NEXT_VERSION] with the actual version and today's date
         if grep -q "## \[NEXT_VERSION\]" "CHANGELOG.md"; then
-            sed -i "s/^## \[NEXT_VERSION\] - \[UNRELEASED\]/## [$CURRENT_VERSION] - $CURRENT_DATE/" "CHANGELOG.md"
+            sed_inplace "s/^## \[NEXT_VERSION\] - \[UNRELEASED\]/## [$CURRENT_VERSION] - $CURRENT_DATE/" "CHANGELOG.md"
             git add CHANGELOG.md >/dev/null 2>&1
             git commit -m "Update changelog for v$CURRENT_VERSION" >/dev/null 2>&1
         fi
@@ -371,9 +362,9 @@ function package_version_bump_interactive() {
             # Handle both old format [NEXT_VERSION] and new format [NEXT_VERSION] - [UNRELEASED]
             # Only modify CHANGELOG.md, exclude .sh files
             if grep -q "## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]" CHANGELOG.md; then
-                sed -i "0,/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$NEW_VERSION] - $CURRENT_DATE/" CHANGELOG.md
+                sed_inplace "0,/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$NEW_VERSION] - $CURRENT_DATE/" CHANGELOG.md
             else
-                sed -i "0,/^## \\[NEXT_VERSION\\]/ s/^## \\[NEXT_VERSION\\].*$/## [$NEW_VERSION] - $CURRENT_DATE/" CHANGELOG.md
+                sed_inplace "0,/^## \\[NEXT_VERSION\\]/ s/^## \\[NEXT_VERSION\\].*$/## [$NEW_VERSION] - $CURRENT_DATE/" CHANGELOG.md
             fi
             echo "Updated NEXT_VERSION entry in CHANGELOG.md to [$NEW_VERSION] - $CURRENT_DATE."
 
@@ -460,7 +451,7 @@ function package_version_bump_interactive() {
                 if [ -f "$file" ]; then
                     # Use sed to replace [NEXT_VERSION] with the new version.
                     if command -v sed >/dev/null 2>&1; then
-                        sed -i "s/\[NEXT_VERSION\]/$NEW_VERSION/g" "$file"
+                        sed_inplace "s/\[NEXT_VERSION\]/$NEW_VERSION/g" "$file"
                         echo "Updated [NEXT_VERSION] → $NEW_VERSION in $file"
                     fi
                 fi
@@ -509,9 +500,9 @@ function package_version_bump_auto() {
 
             # Handle both old format [NEXT_VERSION] and new format [NEXT_VERSION] - [UNRELEASED]
             if grep -q "## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]" CHANGELOG.md; then
-                sed -i "0,/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$new_version] - $CURRENT_DATE/" CHANGELOG.md
+                sed_inplace "0,/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/ s/^## \\[NEXT_VERSION\\] - \\[UNRELEASED\\]/## [$new_version] - $CURRENT_DATE/" CHANGELOG.md
             else
-                sed -i "0,/^## \\[NEXT_VERSION\\]/ s/^## \\[NEXT_VERSION\\].*$/## [$new_version] - $CURRENT_DATE/" CHANGELOG.md
+                sed_inplace "0,/^## \\[NEXT_VERSION\\]/ s/^## \\[NEXT_VERSION\\].*$/## [$new_version] - $CURRENT_DATE/" CHANGELOG.md
             fi
             echo "Updated NEXT_VERSION entry in CHANGELOG.md to [$new_version] - $CURRENT_DATE."
         fi
@@ -568,7 +559,7 @@ function package_version_bump_auto() {
         if [ -n "$NEXT_VERSION_FILES" ]; then
             echo "$NEXT_VERSION_FILES" | while IFS= read -r file; do
                 if [ -f "$file" ]; then
-                    sed -i "s/\[NEXT_VERSION\]/$new_version/g" "$file"
+                    sed_inplace "s/\[NEXT_VERSION\]/$new_version/g" "$file"
                     echo "Updated [NEXT_VERSION] → $new_version in $file"
                 fi
             done
@@ -643,80 +634,88 @@ function copy_folder() {
         echo "Copying files from $source_dir to $dest_dir"
     fi
 
-    # Check if either robocopy or rsync is available
-    if ! command -v robocopy >/dev/null 2>&1 && ! command -v rsync >/dev/null 2>&1; then
-        echo "❌ Error: Neither robocopy nor rsync found. One is required for folder copying."
+    # Get the best available copy tool
+    local copy_tool=$(get_copy_tool)
+
+    if [ -z "$copy_tool" ]; then
+        echo "❌ Error: No copy utility found (robocopy, rsync, tar, or cp required)"
         return 1
     fi
 
     # Ensure destination directory exists
-    mkdir -p "$dest_dir"
+    create_directory "$dest_dir"
 
-    # Convert to Windows paths if cygpath is available and using robocopy
-    local source_dir_posix="$source_dir"
-    local dest_dir_posix="$dest_dir"
-
-    if command -v robocopy >/dev/null 2>&1; then
-        if [ "$quiet_mode" != "true" ]; then
-            echo "Using robocopy..."
-        fi
-
-        if command -v cygpath >/dev/null 2>&1; then
-            source_dir_posix=$(cygpath -w "$source_dir")
-            dest_dir_posix=$(cygpath -w "$dest_dir")
-        fi
-
-        # Build exclusion arguments for robocopy (separate dirs and files)
-        local robocopy_dir_excludes=()
-        local robocopy_file_excludes=()
-
-        for exclusion in "${exclusions[@]}"; do
-            if [[ "$exclusion" == *.* ]] && [[ "$exclusion" != .* ]]; then
-                # File pattern exclusion (but not dot-prefixed directories)
-                robocopy_file_excludes+=("//XF" "$exclusion")
-            else
-                # Directory exclusion - robocopy needs just the directory name, not full path
-                robocopy_dir_excludes+=("//XD" "$exclusion")
+    case "$copy_tool" in
+        "robocopy")
+            if [ "$quiet_mode" != "true" ]; then
+                echo "Using robocopy..."
             fi
-        done
 
-        # Windows robocopy (handle exit codes properly)
-        set +e  # Temporarily disable exit on error for robocopy
-        if [ "$quiet_mode" = "true" ]; then
-            robocopy "$source_dir_posix" "$dest_dir_posix" //MIR //NS //NC //NFL //NDL //NJH //NJS //NP "${robocopy_dir_excludes[@]}" "${robocopy_file_excludes[@]}" >/dev/null 2>&1
-        else
-            robocopy "$source_dir_posix" "$dest_dir_posix" //MIR //NS //NC //NFL //NDL //NJH //NJS //NP "${robocopy_dir_excludes[@]}" "${robocopy_file_excludes[@]}"
-        fi
-        local robocopy_exit=$?
-        set -e  # Re-enable exit on error
+            # Convert to Windows paths for robocopy
+            local source_dir_posix=$(convert_path_for_windows_tools "$source_dir")
+            local dest_dir_posix=$(convert_path_for_windows_tools "$dest_dir")
 
-        # robocopy exit codes: 0=no files, 1=files copied, 2=extra files, 4=mismatched, 8+=errors
-        if [ $robocopy_exit -ge 8 ]; then
-            echo "❌ Error: robocopy failed with exit code $robocopy_exit"
+            # Build exclusion arguments for robocopy using helper function
+            local robocopy_exclusions=($(get_robocopy_exclusions "${exclusions[@]}"))
+
+            # Windows robocopy (handle exit codes properly)
+            set +e  # Temporarily disable exit on error for robocopy
+            if [ "$quiet_mode" = "true" ]; then
+                robocopy "$source_dir_posix" "$dest_dir_posix" //MIR //NS //NC //NFL //NDL //NJH //NJS //NP "${robocopy_exclusions[@]}" >/dev/null 2>&1
+            else
+                robocopy "$source_dir_posix" "$dest_dir_posix" //MIR //NS //NC //NFL //NDL //NJH //NJS //NP "${robocopy_exclusions[@]}"
+            fi
+            local robocopy_exit=$?
+            set -e  # Re-enable exit on error
+
+            # robocopy exit codes: 0=no files, 1=files copied, 2=extra files, 4=mismatched, 8+=errors
+            if [ $robocopy_exit -ge 8 ]; then
+                echo "❌ Error: robocopy failed with exit code $robocopy_exit"
+                return 1
+            fi
+            ;;
+        "rsync")
+            if [ "$quiet_mode" != "true" ]; then
+                echo "Using rsync..."
+            fi
+
+            # Build exclusion arguments for rsync using helper function
+            local rsync_exclusions=($(get_rsync_exclusions "${exclusions[@]}"))
+
+            if [ "$quiet_mode" = "true" ]; then
+                rsync -aq "${rsync_exclusions[@]}" "$source_dir/" "$dest_dir/"
+            else
+                rsync -aqv "${rsync_exclusions[@]}" "$source_dir/" "$dest_dir/"
+            fi
+            ;;
+        "tar")
+            if [ "$quiet_mode" != "true" ]; then
+                echo "Using tar with exclusions..."
+            fi
+
+            # Build exclusion arguments for tar using helper function
+            local tar_exclusions=($(get_tar_exclusions "${exclusions[@]}"))
+
+            # Use tar to copy with exclusions via pipe
+            if [ "$quiet_mode" = "true" ]; then
+                (cd "$source_dir" && tar cf - "${tar_exclusions[@]}" .) | (cd "$dest_dir" && tar xf -) 2>/dev/null
+            else
+                (cd "$source_dir" && tar cf - "${tar_exclusions[@]}" .) | (cd "$dest_dir" && tar xf -)
+            fi
+            ;;
+        "cp")
+            if [ "$quiet_mode" != "true" ]; then
+                echo "Using cp (basic copy, no exclusions)..."
+            fi
+
+            # Note: cp doesn't support exclusions, so we do a basic copy
+            cp -r "$source_dir/." "$dest_dir/"
+            ;;
+        *)
+            echo "❌ Error: Unknown copy tool: $copy_tool"
             return 1
-        fi
-
-    elif command -v rsync >/dev/null 2>&1; then
-        if [ "$quiet_mode" != "true" ]; then
-            echo "Using rsync..."
-        fi
-
-        # Build exclusion arguments for rsync
-        local rsync_excludes=()
-        for exclusion in "${exclusions[@]}"; do
-            rsync_excludes+=("--exclude=$exclusion")
-        done
-
-        if [ "$quiet_mode" = "true" ]; then
-            rsync -aq "${rsync_excludes[@]}" "$source_dir/" "$dest_dir/"
-        else
-            rsync -aqv "${rsync_excludes[@]}" "$source_dir/" "$dest_dir/"
-        fi
-
-    else
-        echo "❌ Error: No copy utility found (robocopy or rsync required)"
-        return 1
-    fi
+            ;;
+    esac
 
     if [ "$quiet_mode" != "true" ]; then
         echo "✅ Folder copied successfully from $source_dir to $dest_dir"
@@ -849,61 +848,61 @@ function zip_folder() {
         echo "Creating ZIP file: $zip_filename"
     fi
 
-    if command -v zip >/dev/null 2>&1; then
-        if [ "$quiet_mode" != "true" ]; then
-            echo "Using zip command..."
-        fi
+    # Get the best available compression tool
+    local compression_tool=$(get_compression_tool)
 
-        # Get the parent directory of the source directory
-        local source_parent=$(dirname "$source_dir")
-        cd "$source_parent"
-
-        local zip_excludes=()
-        for exclusion in "${exclusions[@]}"; do
-            # Handle different exclusion patterns for zip command
-            if [[ "$exclusion" == ./* ]]; then
-                # Remove ./ prefix for zip command
-                local clean_exclusion="${exclusion#./}"
-                zip_excludes+=("-x" "${zip_name}/${clean_exclusion}" "${zip_name}/${clean_exclusion}/*")
-            elif [[ "$exclusion" == */* ]]; then
-                # Path with subdirectories
-                zip_excludes+=("-x" "${zip_name}/${exclusion}" "${zip_name}/${exclusion}/*")
-            else
-                # Simple file/directory name
-                zip_excludes+=("-x" "${zip_name}/${exclusion}" "${zip_name}/${exclusion}/*" "*/${exclusion}" "*/${exclusion}/*")
-            fi
-        done
-
-        zip -r -q "$zip_filename" "$zip_name" "${zip_excludes[@]}"
-
-    elif command -v 7z.exe >/dev/null 2>&1; then
-        if [ "$quiet_mode" != "true" ]; then
-            echo "Using 7-Zip..."
-        fi
-
-        local sevenz_excludes=()
-        for exclusion in "${exclusions[@]}"; do
-            sevenz_excludes+=("-xr!${exclusion}")
-        done
-
-        7z.exe a "$zip_filename" "$source_dir" "${sevenz_excludes[@]}" >/dev/null 2>&1
-
-    elif command -v 7z >/dev/null 2>&1; then
-        if [ "$quiet_mode" != "true" ]; then
-            echo "Using 7z..."
-        fi
-
-        local sevenz_excludes=()
-        for exclusion in "${exclusions[@]}"; do
-            sevenz_excludes+=("-xr!${exclusion}")
-        done
-
-        7z a "$zip_filename" "$source_dir" "${sevenz_excludes[@]}" >/dev/null 2>&1
-
-    else
-        echo "❌ Error: No ZIP utility found (zip, 7z.exe, or 7z required)"
+    if [ -z "$compression_tool" ]; then
+        echo "❌ Error: No compression utility found (zip, 7z.exe, 7z, or 7za required)"
         return 1
     fi
+
+    case "$compression_tool" in
+        "zip")
+            if [ "$quiet_mode" != "true" ]; then
+                echo "Using zip command..."
+            fi
+
+            # Get the parent directory of the source directory
+            local source_parent=$(dirname "$source_dir")
+            cd "$source_parent"
+
+            local zip_excludes=()
+            for exclusion in "${exclusions[@]}"; do
+                # Handle different exclusion patterns for zip command
+                if [[ "$exclusion" == ./* ]]; then
+                    # Remove ./ prefix for zip command
+                    local clean_exclusion="${exclusion#./}"
+                    zip_excludes+=("-x" "${zip_name}/${clean_exclusion}" "${zip_name}/${clean_exclusion}/*")
+                elif [[ "$exclusion" == */* ]]; then
+                    # Path with subdirectories
+                    zip_excludes+=("-x" "${zip_name}/${exclusion}" "${zip_name}/${exclusion}/*")
+                else
+                    # Simple file/directory name
+                    zip_excludes+=("-x" "${zip_name}/${exclusion}" "${zip_name}/${exclusion}/*" "*/${exclusion}" "*/${exclusion}/*")
+                fi
+            done
+
+            zip -r -q "$zip_filename" "$zip_name" "${zip_excludes[@]}"
+            ;;
+        "7z.exe"|"7z"|"7za")
+            if [ "$quiet_mode" != "true" ]; then
+                echo "Using $compression_tool..."
+            fi
+
+            # Build exclusion arguments for 7z using helper function
+            local sevenz_exclusions=($(get_7z_exclusions "${exclusions[@]}"))
+
+            if [ "$quiet_mode" = "true" ]; then
+                "$compression_tool" a "$zip_filename" "$source_dir" "${sevenz_exclusions[@]}" >/dev/null 2>&1
+            else
+                "$compression_tool" a "$zip_filename" "$source_dir" "${sevenz_exclusions[@]}"
+            fi
+            ;;
+        *)
+            echo "❌ Error: Unknown compression tool: $compression_tool"
+            return 1
+            ;;
+    esac
 
     if [ "$quiet_mode" != "true" ]; then
         echo "✅ ZIP file created successfully: $zip_filename"

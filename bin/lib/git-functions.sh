@@ -1,6 +1,12 @@
 #!/bin/bash
 
 # Git utility functions for release script
+
+# Source platform utilities if not already loaded
+if ! command -v get_platform >/dev/null 2>&1; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$SCRIPT_DIR/platform-utils.sh"
+fi
 # Copied from git.bashrc
 
 # Git commit with message

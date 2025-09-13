@@ -15,13 +15,14 @@
   "author": "David B",
   "bin": {
     "wp-release": "./bin/wp-release.js",
-    "wp-release:test": "./bin/wp-release-test.js"
+    "wp-build-tools": "./bin/setup.js"
   },
   "files": [
     "bin/",
+    "scripts/",
     "config/"
   ],
   "scripts": {
-    "postinstall": "chmod +x bin/release.sh"
+    "postinstall": "chmod +x bin/release.sh && node scripts/postinstall.js"
   }
 }
