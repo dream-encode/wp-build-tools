@@ -120,10 +120,10 @@ function get_robocopy_exclusions() {
     for exclusion in "${exclusions[@]}"; do
         if [[ "$exclusion" == *.* ]] && [[ "$exclusion" != .* ]]; then
             # File pattern exclusion (but not dot-prefixed directories)
-            robocopy_file_excludes+=("/XF" "$exclusion")
+            robocopy_file_excludes+=("//XF" "$exclusion")
         else
             # Directory exclusion - robocopy needs just the directory name, not full path
-            robocopy_dir_excludes+=("/XD" "$exclusion")
+            robocopy_dir_excludes+=("//XD" "$exclusion")
         fi
     done
 

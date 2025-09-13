@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.4] - 2025-09-13
+* BUG: Maybe fix copy_folder.
+
 ## [0.6.3] - 2025-09-13
 * BUG: NPM doesn't like hotfix versions.
 
