@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Fix double changelog updates.
 
 ## [0.6.7] - 2025-09-13
 * BUG: Don't add the NEXT_VERSION template until after the release asset is built.
