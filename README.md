@@ -4,33 +4,79 @@ Some scripts to help handle builds, releases, testing, etc.
 
 ## Prerequisites
 
-Before using the release script, ensure you have the following tools installed:
+The release script automatically detects and uses the best available tools on your platform (Windows, macOS, Linux).
 
-- **Git** - For version control operations
-- **GitHub CLI (gh)** - For creating GitHub releases
-  - Install: https://cli.github.com/
-  - Authenticate: `gh auth login`
-- **jq** - For JSON processing
-  - Install: `sudo apt-get install jq` (Linux) or `brew install jq` (macOS)
-- **WP-CLI** (optional) - For updating translation files
-  - Install: https://wp-cli.org/
+### Required Tools
+- **Git** - Version control operations
+- **GitHub CLI (gh)** - Creating GitHub releases ([install](https://cli.github.com/) & authenticate: `gh auth login`)
+- **jq** - JSON processing
+- **Compression tool** - One of: 7z, zip
+
+### Optional Tools
+- **WP-CLI** - Translation file updates ([install](https://wp-cli.org/))
+- **Node.js/npm/yarn** - For block plugins
+- **Composer** - For PHP dependencies
+
+### Quick Install Commands
+```bash
+# Windows (via Chocolatey)
+choco install git jq 7zip gh
+
+# macOS (via Homebrew)
+brew install git jq p7zip gh
+
+# Linux (Ubuntu/Debian)
+sudo apt install git jq p7zip-full
+# Install GitHub CLI: https://github.com/cli/cli/blob/trunk/docs/install_linux.md
+```
+
+### Automatic Setup
+After installing wp-build-tools, it will automatically offer to configure your project:
+
+```bash
+npm install --save-dev @dream-encode/wp-build-tools
+# Automatically prompts to add "release": "wp-release" to package.json
+```
+
+### Manual Setup
+```bash
+npx @dream-encode/wp-build-tools setup    # Interactive setup
+npx @dream-encode/wp-build-tools setup --force    # Automatic setup
+```
+
+### Check Tool Availability
+```bash
+wp-release --check-tools    # Verify all tools are installed
+wp-release --test           # Run comprehensive tests
+```
 
 ## Usage
 
-### Using npm/yarn scripts (recommended)
+### Basic Commands
 
 ```bash
 # Interactive release (prompts for version bump type selection)
-npm run release
-# or
-yarn release
+wp-release
+
+# Specific version bumps
+wp-release patch    # 1.0.0 → 1.0.1 (bug fixes)
+wp-release minor    # 1.0.0 → 1.1.0 (new features)
+wp-release major    # 1.0.0 → 2.0.0 (breaking changes)
+wp-release hotfix   # 1.0.0 → 1.0.0.1 (critical fixes)
+
+# Tool management
+wp-release --check-tools    # Check if all required tools are installed
+wp-release --test           # Run comprehensive compatibility and readiness tests
+wp-release --help           # Show detailed help
+wp-release --version        # Show version info
 ```
 
-### Direct script execution
+### Using npm/yarn scripts (alternative)
 
 ```bash
-# Interactive release (shows version bump type menu)
-./bin/release.sh
+# If you have npm scripts configured
+npm run release
+yarn release
 ```
 
 ## What the release script does
@@ -53,14 +99,15 @@ yarn release
      - `composer.json` (if exists)
      - `block.json` files (if exists)
      - Main plugin PHP file
+     - Constants files (if exists)
      - `public/manifest.json` (if exists)
 
 4. **Translation updates**
    - Updates POT files using WP-CLI (if available)
 
 5. **Changelog management**
-   - Looks for "0.1.1" entry at top of CHANGELOG.md
-   - Replaces "0.1.1" with "[X.X.X.X] - YYYY-MM-DD" format
+   - Looks for "0.6.1 - [UNRELEASED]" entry at top of CHANGELOG.md
+   - Replaces "0.6.1 - [UNRELEASED]" with "[X.X.X.X] - YYYY-MM-DD" format
 
 6. **Git operations**
    - Commits version bump changes
@@ -78,6 +125,50 @@ yarn release
 
 ## Configuration
 
+### Automatic Project Setup
+
+When you install `@dream-encode/wp-build-tools` in a project, it will automatically:
+
+1. **Detect your project** - Finds your package.json
+2. **Analyze existing scripts** - Checks for existing release scripts
+3. **Prompt for setup** - Asks permission before making changes (in interactive mode)
+4. **Backup existing scripts** - Saves any existing release script as "release-backup"
+5. **Add release script** - Adds `"release": "wp-release"` to your package.json
+
+#### Setup Options
+
+```bash
+# Interactive setup (prompts for confirmation)
+npx @dream-encode/wp-build-tools setup
+
+# Automatic setup (no prompts)
+npx @dream-encode/wp-build-tools setup --force
+
+# Skip setup entirely
+NO_SETUP=1 npm install @dream-encode/wp-build-tools
+```
+
+#### What Gets Added
+
+```json
+{
+  "scripts": {
+    "release": "wp-release"
+  }
+}
+```
+
+If you already have a release script, it will be backed up:
+
+```json
+{
+  "scripts": {
+    "release": "wp-release",
+    "release-backup": "your-previous-command"
+  }
+}
+```
+
 ### Release Assets
 
 To enable ZIP asset creation, add this line to your main plugin file header:
@@ -90,31 +181,29 @@ To enable ZIP asset creation, add this line to your main plugin file header:
 
 ### Changelog Format
 
-The script expects a `CHANGELOG.md` file in Keep a Changelog format with an "0.1.1" entry at the top:
+The script expects a `CHANGELOG.md` file in Keep a Changelog format with an "0.6.1 - [UNRELEASED]" entry at the top:
 
 ```markdown
-## 0.1.1
-
+## 0.6.1 - [UNRELEASED]
 * Added new feature
 * Fixed bug
 
 ## [1.0.0] - 2024-01-15
-
 * Initial release
 ```
 
-During release, "0.1.1" will be automatically replaced with the version and date:
+During release, "0.6.1 - [UNRELEASED]" will be automatically replaced with the version and date:
 
 ```markdown
 ## [1.1.0] - 2024-01-20
-
 * Added new feature
 * Fixed bug
 
 ## [1.0.0] - 2024-01-15
-
 * Initial release
 ```
+
+Then, a new "0.6.1 - [UNRELEASED]" entry will be added at the top for the next release.
 
 ## Troubleshooting
 
@@ -138,12 +227,19 @@ set -x  # Enable debug output
 
 ```
 bin/
-├── release.sh              # Main release script
-├── lib/
-│   ├── general-functions.sh # General utility functions
-│   ├── git-functions.sh     # Git-related functions
-│   └── wp-functions.sh      # WordPress-specific functions
-└── README.md               # This file
+├── release.sh                      # Main release script with CLI flags
+├── wp-release.js                   # Node.js wrapper script
+├── setup.js                       # Setup command (npx @dream-encode/wp-build-tools setup)
+└── lib/
+    ├── platform-utils.sh           # Cross-platform utilities
+    ├── tool-checker.sh             # Tool availability checking
+    ├── general-functions.sh        # General utility functions
+    ├── git-functions.sh            # Git-related functions
+    └── wp-functions.sh             # WordPress-specific functions
+
+scripts/
+├── setup-project.js                # Project setup logic
+└── postinstall.js                  # Automatic setup after npm install
 ```
 
 ## Customization

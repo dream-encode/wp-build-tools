@@ -1,6 +1,12 @@
 #!/bin/bash
 
 # WordPress-specific utility functions for release script
+
+# Source platform utilities if not already loaded
+if ! command -v get_platform >/dev/null 2>&1; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$SCRIPT_DIR/platform-utils.sh"
+fi
 # Copied from wp.bashrc
 function wp_check_debugging_code() {
     local quiet_mode="false"
@@ -304,7 +310,7 @@ function wp_zip() {
     fi
 
     COPY_DIR="$TEMP_DIR/${ZIP_NAME}"
-    CURRENT_DIR_POSIX=$(cygpath -w "$CURRENT_DIR")
+    CURRENT_DIR_POSIX=$(convert_path_for_windows_tools "$CURRENT_DIR")
     ZIP_FILENAME="$TEMP_DIR/$ZIP_NAME.zip"
 
     TYPE="Plugin"
@@ -389,14 +395,14 @@ function wp_plugin_bump_version() {
 
     # Update version in plugin header
     if grep -q "Version:" "$FILENAME"; then
-        sed -i "s/Version:.*$/Version: $NEW_VERSION/" "$FILENAME"
+        sed_inplace "s/Version:.*$/Version: $NEW_VERSION/" "$FILENAME"
         echo "Updated version in $FILENAME header."
     fi
 
     # Update version constant if it exists
     local PLUGIN_CONSTANT=$(echo "$PLUGIN_NAME" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
     if grep -q "define.*${PLUGIN_CONSTANT}_VERSION" "$FILENAME"; then
-        sed -i "s/define.*${PLUGIN_CONSTANT}_VERSION.*$/define( '${PLUGIN_CONSTANT}_VERSION', '$NEW_VERSION' );/" "$FILENAME"
+        sed_inplace "s/define.*${PLUGIN_CONSTANT}_VERSION.*$/define( '${PLUGIN_CONSTANT}_VERSION', '$NEW_VERSION' );/" "$FILENAME"
         echo "Updated ${PLUGIN_CONSTANT}_VERSION constant in $FILENAME."
     fi
 
@@ -413,7 +419,7 @@ function wp_plugin_bump_version() {
         if [ -f "$CONSTANTS_FILE" ]; then
             local PLUGIN_CONSTANT=$(echo "$PLUGIN_NAME" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
             if grep -q "define.*${PLUGIN_CONSTANT}_PLUGIN_VERSION" "$CONSTANTS_FILE"; then
-                sed -i "s/define.*${PLUGIN_CONSTANT}_PLUGIN_VERSION.*$/define( '${PLUGIN_CONSTANT}_PLUGIN_VERSION', '$NEW_VERSION' );/" "$CONSTANTS_FILE"
+                sed_inplace "s/define.*${PLUGIN_CONSTANT}_PLUGIN_VERSION.*$/define( '${PLUGIN_CONSTANT}_PLUGIN_VERSION', '$NEW_VERSION' );/" "$CONSTANTS_FILE"
                 echo "Updated ${PLUGIN_CONSTANT}_PLUGIN_VERSION constant in $CONSTANTS_FILE."
             fi
         fi
@@ -436,6 +442,7 @@ function wp_plugin_bump_version() {
 
 # WordPress-specific release function - extends git_create_release with WP functionality
 function wp_create_release() {
+    local version_type="$1"
     echo "🚀 Starting WordPress release process..."
 
     # Set some vars for WP detection
@@ -507,7 +514,11 @@ function wp_create_release() {
 
     # Step 4: Call the core git release function
     step_start "[4/6] 🔄 Running core release process"
-    git_create_release_quiet --quiet
+    if [ -n "$version_type" ]; then
+        git_create_release_quiet "$version_type" --quiet
+    else
+        git_create_release_quiet --quiet
+    fi
     local git_exit_code=$?
 
     # If core release failed, exit

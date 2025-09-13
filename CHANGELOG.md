@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.2] - 2025-09-13
+* BUG: Fix version bump and GitHub release issues with empty version variables.
+
+## [0.6.1] - 2025-09-13
+* ENH: Add automatic package.json setup functionality.
+* BUG: Fix changelog version replacement bug.
+
+## [0.6.0] - 2025-09-13
+* ENH: Add optional flags for --check-tools and --test.
+* ENH: Add postinstall.js to automatically configure projects.
+* ENH: Add copy_folder fallbacks.
+
 ## [0.5.2] - 2025-09-12
 * BUG: Fix PROJECT_ROOT detection when in a WP plugin or theme.
 
@@ -10,10 +22,10 @@
 * BUG: Fix some bugs.  Ready for more testing in a plugin.
 
 ## [0.4.2.1] - 2025-09-12
-* BUG: Example fix description.
+* BUG: Fix version bump and GitHub release issues with empty version variables.
 
 ## [0.4.2] - 2025-09-12
-* BUG: Example fix description.
+* BUG: Fix version bump and GitHub release issues with empty version variables.
 
 ## [0.4.1] - 2025-09-12
 * ENH: More changes from bash.
