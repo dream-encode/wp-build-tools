@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Don't include node_modules in release assets if there are no production dependencies.
 
 ## [0.6.4] - 2025-09-13
 * BUG: Maybe fix copy_folder.
