@@ -507,9 +507,6 @@ function git_create_release_quiet() {
 
     git checkout "$CURRENT_BRANCH" >/dev/null 2>&1
 
-    # Add new [NEXT_VERSION] template when back on development branch
-    changelog_add_next_version_template --quiet
-
     echo "  ✅ Release version $NEW_VERSION created."
 }
 
