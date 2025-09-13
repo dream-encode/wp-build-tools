@@ -550,14 +550,16 @@ function wp_create_release() {
     if ! wp_plugin_has_release_asset; then
         echo ""
         echo "ℹ️  This plugin/theme does not use a release asset. Exiting."
+        wp_post_create_release
         return 0
     fi
 
     # If this is a theme and a release workflow exists, skip local asset build
-    if [ "$IS_WP_THEME" = true ] && github_actions_release_workflow_exists; then
+    if github_actions_release_workflow_exists; then
         echo ""
-        echo "🔄 Release workflow detected (release.yml). Skipping local release asset build for theme."
-        echo "✅ WordPress theme release completed!"
+        echo "🔄 Release workflow detected (release.yml). Skipping local release asset build."
+        echo "✅ WordPress release completed!"
+        wp_post_create_release
         return 0
     fi
 
@@ -572,6 +574,8 @@ function wp_create_release() {
     gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" >/dev/null 2>&1
     step_done
 
+    wp_post_create_release
+
     echo ""
     echo "🎊 SUCCESS: WordPress release v$RELEASE_VERSION created with asset!"
     echo "📋 Zip: $ZIP_FILE"
@@ -581,4 +585,11 @@ function wp_create_release() {
     # if [ $? == 0 ]; then
     #     wp_update_plugin_via_git_remote_updater
     # fi
+}
+
+function wp_post_create_release() {
+    git checkout development
+
+    # Add new [NEXT_VERSION] template when back on development branch.
+    changelog_add_next_version_template --quiet
 }
