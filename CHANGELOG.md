@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.6.3] - 2025-09-13
 * BUG: NPM doesn't like hotfix versions.
 

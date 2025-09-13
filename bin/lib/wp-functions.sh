@@ -332,9 +332,14 @@ function wp_zip() {
         step_start "[1/4] 📁 Copying files to temporary directory"
     fi
     if [ "$quiet_mode" = "true" ]; then
-        copy_folder "$CURRENT_DIR" "$COPY_DIR" --quiet 2>/dev/null
+        copy_folder "$CURRENT_DIR" "$COPY_DIR" --quiet
     else
-        copy_folder "$CURRENT_DIR" "$COPY_DIR" 2>/dev/null
+        copy_folder "$CURRENT_DIR" "$COPY_DIR"
+    fi
+    copy_result=$?
+    if [ $copy_result -ne 0 ]; then
+        echo "❌ Error: Failed to copy files to temporary directory (exit code: $copy_result)"
+        return 1
     fi
     if [ "$quiet_mode" != "true" ]; then
         step_done
