@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.6.8] - 2025-09-13
 * BUG: Fix double changelog updates.
 
 ## [0.6.7] - 2025-09-13
