@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Fix spacing in version replacement.
+
 ## [0.6.5] - 2025-09-13
 * BUG: Don't include node_modules in release assets if there are no production dependencies.
 
