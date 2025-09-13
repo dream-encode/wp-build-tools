@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.6.9] - 2025-09-13
 * BUG: Fix changelog next version template included in release assets.
 
 ## [0.6.8] - 2025-09-13
