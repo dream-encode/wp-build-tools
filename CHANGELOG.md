@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.2.1] - 2025-09-13
+* BUG: Make release asset header detection more robust.
+
 ## [0.6.2] - 2025-09-13
 * BUG: Fix version bump and GitHub release issues with empty version variables.
 
