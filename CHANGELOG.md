@@ -1,9 +1,6 @@
 # Changelog
 
 ## [0.6.1] - 2025-09-13
-* BUG: Example fix description.
-
-## [0.6.1] - 2025-09-13
 * ENH: Add automatic package.json setup functionality.
 * BUG: Fix changelog version replacement bug.
 
