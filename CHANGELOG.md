@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Fix github_actions_release_workflow_exists function name.
 
 ## [0.6.8] - 2025-09-13
 * BUG: Fix double changelog updates.
