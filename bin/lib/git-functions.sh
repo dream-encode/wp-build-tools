@@ -93,7 +93,7 @@ function check_gh_cli() {
     return 0
 }
 
-function github_actions_github_actions_release_workflow_exists() {
+function github_actions_release_workflow_exists() {
     # Consider common release workflow names
     if [ -f .github/workflows/release.yml ] || [ -f .github/workflows/release.yaml ]; then
         return 0
@@ -616,14 +616,6 @@ function git_post_create_release() {
     # Return to original branch.
     echo "Returning to original branch: $original_branch"
     git checkout "$original_branch"
-
-    # Add template changelog entry if changelog file exists.
-    if changelog_exists; then
-        echo "Adding template changelog entry..."
-        # Only modify CHANGELOG.md, use anchored pattern to avoid .sh files
-        sed -i "s/^## \[$current_version\]/## [NEXT_VERSION] - [UNRELEASED]\n* BUG: Example fix description.\n\n## [$current_version]/" "CHANGELOG.md"
-        echo "✅ Template changelog entry added to CHANGELOG.md"
-    fi
 
     echo "✅ Post-release cleanup completed."
 }
