@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.6.19] - 2025-09-14
 * ENH: Add more output to the version bump.
 * BUG: Maybe fix postinstall.
 
