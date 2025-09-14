@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.6.17] - 2025-09-14
 * BUG: Revert back to the inline implementation.
 
 ## [0.6.16] - 2025-09-14
