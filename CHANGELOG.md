@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Revert back to the inline implementation.
 
 ## [0.6.16] - 2025-09-14
 * BUG: Fix dependencies.
