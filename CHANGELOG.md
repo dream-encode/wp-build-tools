@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.6.19] - 2025-09-14
+* ENH: Add more output to the version bump.
+* BUG: Maybe fix postinstall.
+
 ## [0.6.18] - 2025-09-14
 * BUG: Remove extra output during next version replacement.
 

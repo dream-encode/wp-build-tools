@@ -460,20 +460,28 @@ function git_create_release_quiet() {
             # Update package.json
             bump_version_package_json "$NEW_VERSION" >/dev/null
 
+            echo "    - Updated package.json."
+
             # Update composer.json if it exists
             if [ -f "composer.json" ]; then
                 jq ".version = \"$NEW_VERSION\"" composer.json > composer.json.tmp && mv composer.json.tmp composer.json
+
+                echo "    - Updated composer.json."
             fi
 
             # Update public/manifest.json if it exists
             if [ -f "public/manifest.json" ]; then
                 jq ".version = \"$NEW_VERSION\"" public/manifest.json > public/manifest.json.tmp && mv public/manifest.json.tmp public/manifest.json
+
+                echo "    - Updated public/manifest.json."
             fi
 
             # Update WordPress plugin/theme files if applicable
             if [[ $PWD/ = */wp-content/plugins/* ]] || [[ $PWD/ = */wp-content/themes/* ]]; then
                 if command -v wp_plugin_bump_version >/dev/null 2>&1; then
                     wp_plugin_bump_version "$NEW_VERSION" >/dev/null 2>&1
+
+                    echo "    - Updated WordPress plugin/theme files."
                 fi
             fi
 
@@ -518,6 +526,8 @@ function git_create_release_quiet() {
                             fi
                         fi
                     done
+
+                    echo "    - Replaced [NEXT_VERSION] with $NEW_VERSION in files."
                 fi
             fi
 
