@@ -827,7 +827,7 @@ function zip_folder() {
 
     # Check if is_wp_block_plugin function exists and call it if available
     if command -v is_wp_block_plugin >/dev/null 2>&1 && is_wp_block_plugin; then
-        default_exclusions+=("./src")
+        default_exclusions+=("src" "./src" "*/src")
     fi
 
     local exclusions=("${ZIP_EXCLUSIONS[@]:-${default_exclusions[@]}}")

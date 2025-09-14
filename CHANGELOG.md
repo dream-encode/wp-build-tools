@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.6.10] - 2025-09-13
+* BUG: Exclude /src in block plugin release assets.
+* BUG: Make wp_is_block_plugin more robust.
+
 ## [0.6.9] - 2025-09-13
 * BUG: Fix changelog next version template included in release assets.
 
