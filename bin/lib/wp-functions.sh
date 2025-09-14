@@ -562,13 +562,45 @@ function wp_create_release() {
     # Step 5: Create WordPress release asset
     step_start "[5/6] 📦 Creating WordPress release asset"
     local ZIP_FILE_PATH=$(wp_zip --for-git-updater --quiet)
+    local zip_exit_code=$?
+
+    # Check if ZIP creation was successful
+    if [ $zip_exit_code -ne 0 ]; then
+        printf "\n❌ Error: WordPress release asset creation failed (exit code: $zip_exit_code)\n"
+        printf "   This may be due to build process issues or dependency conflicts.\n"
+        return 1
+    fi
+
+    # Verify ZIP file was actually created
+    if [ -z "$ZIP_FILE_PATH" ] || [ ! -f "$ZIP_FILE_PATH" ]; then
+        printf "\n❌ Error: ZIP file was not created or path is invalid\n"
+        printf "   Expected path: $ZIP_FILE_PATH\n"
+        return 1
+    fi
+
     local ZIP_FILE=$(basename "$ZIP_FILE_PATH")
     step_done
 
     # Step 6: Upload the asset to the release
     step_start "[6/6] ⬆️  Uploading release asset to GitHub"
-    gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" >/dev/null 2>&1
-    step_done
+
+    # Check if ZIP file exists before attempting upload
+    if [ ! -f "$ZIP_FILE_PATH" ]; then
+        printf "\n❌ Error: ZIP file not found at $ZIP_FILE_PATH\n"
+        printf "   ZIP creation may have failed. Check the build process.\n"
+        return 1
+    fi
+
+    # Attempt to upload with error handling
+    if gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" >/dev/null 2>&1; then
+        step_done
+    else
+        printf "\n❌ Error: Failed to upload release asset to GitHub\n"
+        printf "   Release: v$RELEASE_VERSION\n"
+        printf "   ZIP file: $ZIP_FILE_PATH\n"
+        printf "   Check GitHub CLI authentication and release existence.\n"
+        return 1
+    fi
 
     wp_post_create_release
 

@@ -1046,10 +1046,19 @@ function build_for_production() {
             if [[ $require_length -gt 0 ]] && [[ "$has_php_only" != "true" ]]; then
                 if [ "$quiet_mode" != "true" ]; then
                     echo "📦 Project has Composer production dependencies"
-                    composer update --quiet --no-dev --optimize-autoloader --no-interaction
-                    echo "✅ Composer dependencies updated for production"
+                    # Use install instead of update to avoid dependency conflicts
+                    if composer install --quiet --no-dev --optimize-autoloader --no-interaction; then
+                        echo "✅ Composer dependencies installed for production"
+                    else
+                        echo "❌ Composer install failed, trying update as fallback"
+                        composer update --quiet --no-dev --optimize-autoloader --no-interaction
+                        echo "✅ Composer dependencies updated for production"
+                    fi
                 else
-                    composer update --quiet --no-dev --optimize-autoloader --no-interaction >/dev/null 2>&1
+                    # Try install first, fallback to update if it fails
+                    if ! composer install --quiet --no-dev --optimize-autoloader --no-interaction >/dev/null 2>&1; then
+                        composer update --quiet --no-dev --optimize-autoloader --no-interaction >/dev/null 2>&1
+                    fi
                 fi
             else
                 if [ "$quiet_mode" != "true" ]; then
