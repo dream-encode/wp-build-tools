@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.20] - 2025-09-14
+* BUG: Exclude action-scheduler and libraries from debugging code check.
+
 ## [0.6.19] - 2025-09-14
 * ENH: Add more output to the version bump.
 * BUG: Maybe fix postinstall.

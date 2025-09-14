@@ -60,16 +60,18 @@ function wp_check_debugging_code() {
         local pattern="${debug_patterns[$i]}"
         local name="${debug_names[$i]}"
 
-        local count=$(grep -ro --exclude-dir={node_modules,vendor,tests} --exclude=*wc-logger.php "$pattern" . | wc -l)
+        local count=$(grep -ro --exclude-dir={node_modules,vendor,tests,action-scheduler,libraries} --exclude=*wc-logger.php "$pattern" . | wc -l)
 
         if [ "$count" -gt 0 ]; then
             if [ "$found_issues" = false ]; then
+                echo "❌"
+                echo ""
                 echo "Found debugging code in the following files:"
                 found_issues=true
             fi
             echo ""
             echo "=== $name ($count occurrences) ==="
-            grep -rn --exclude-dir={node_modules,vendor,tests} --exclude=*wc-logger.php "$pattern" .
+            grep -rn --exclude-dir={node_modules,vendor,tests,action-scheduler,libraries} --exclude=*wc-logger.php "$pattern" .
             total_count=$((total_count + count))
         fi
     done
