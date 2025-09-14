@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.11] - 2025-09-13
+* BUG: Only replace the version string in the WP plugin file, not other @since references.
+
 ## [0.6.10] - 2025-09-13
 * BUG: Exclude /src in block plugin release assets.
 * BUG: Make wp_is_block_plugin more robust.

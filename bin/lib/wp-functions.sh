@@ -400,7 +400,7 @@ function wp_plugin_bump_version() {
 
     # Update version in plugin header
     if grep -q "Version:" "$FILENAME"; then
-        sed_inplace "s/\([0-9]\+\.[0-9]\+\.[0-9]\+\)/$NEW_VERSION/" "$FILENAME"
+        sed_inplace "s/^\( \* Version:[ \t]*\)[0-9.]\+/\1$NEW_VERSION/" "$FILENAME"
         echo "Updated version in $FILENAME header."
     fi
 
