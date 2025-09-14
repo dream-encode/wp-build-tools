@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.6.13] - 2025-09-14
 * BUG: Fix zips not being created due to composer dependency conflicts.
 
 ## [0.6.12] - 2025-09-14
