@@ -1,6 +1,6 @@
 {
   "name": "@dream-encode/wp-build-tools",
-  "version": "0.6.16",
+  "version": "0.6.17",
   "description": "Some scripts to help handle builds, releases, testing, etc.",
   "homepage": "https://github.com/dream-encode/wp-build-tools#readme",
   "type": "commonjs",

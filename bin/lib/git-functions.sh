@@ -457,8 +457,81 @@ function git_create_release_quiet() {
                 NEW_VERSION=$(calculate_new_version "$CURRENT_VERSION" "$bump_type")
             fi
 
-            # Use the abstracted version bump function which handles all file types
-            package_version_bump_auto "$bump_type" >/dev/null
+            # Update package.json
+            bump_version_package_json "$NEW_VERSION" >/dev/null
+
+            # Update composer.json if it exists
+            if [ -f "composer.json" ]; then
+                jq ".version = \"$NEW_VERSION\"" composer.json > composer.json.tmp && mv composer.json.tmp composer.json
+            fi
+
+            # Update public/manifest.json if it exists
+            if [ -f "public/manifest.json" ]; then
+                jq ".version = \"$NEW_VERSION\"" public/manifest.json > public/manifest.json.tmp && mv public/manifest.json.tmp public/manifest.json
+            fi
+
+            # Update WordPress plugin/theme files if applicable
+            if [[ $PWD/ = */wp-content/plugins/* ]] || [[ $PWD/ = */wp-content/themes/* ]]; then
+                if command -v wp_plugin_bump_version >/dev/null 2>&1; then
+                    wp_plugin_bump_version "$NEW_VERSION" >/dev/null 2>&1
+                fi
+            fi
+
+            # Replace [NEXT_VERSION] placeholders in all files.
+            echo "Searching for [NEXT_VERSION] placeholders to replace with $NEW_VERSION..."
+            local NEXT_VERSION_FILES
+
+            # Find all files containing [NEXT_VERSION] (excluding binary files, node_modules, vendor, .git).
+            if command -v grep >/dev/null 2>&1; then
+                NEXT_VERSION_FILES=$(grep -r -l "\[NEXT_VERSION\]" . \
+                    --exclude-dir=node_modules \
+                    --exclude-dir=vendor \
+                    --exclude-dir=.git \
+                    --exclude-dir=tests \
+                    --exclude="*.zip" \
+                    --exclude="*.tar.gz" \
+                    --exclude="*.jpg" \
+                    --exclude="*.jpeg" \
+                    --exclude="*.png" \
+                    --exclude="*.gif" \
+                    --exclude="*.ico" \
+                    --exclude="*.pdf" \
+                    --exclude="*.woff" \
+                    --exclude="*.woff2" \
+                    --exclude="*.ttf" \
+                    --exclude="*.eot" \
+                    --exclude="*.svg" \
+                    --exclude="*.mp4" \
+                    --exclude="*.mp3" \
+                    --exclude="*.wav" \
+                    --exclude="*.lock" \
+                    --exclude="*.sh" \
+                    --exclude="CHANGELOG.md" \
+                    2>/dev/null || true)
+
+                if [ -n "$NEXT_VERSION_FILES" ]; then
+                    echo "Found [NEXT_VERSION] placeholders in the following files:"
+                    echo "$NEXT_VERSION_FILES" | while IFS= read -r file; do
+                        echo "  - $file"
+                    done
+                    echo ""
+
+                    # Replace [NEXT_VERSION] with the actual version in each file.
+                    echo "$NEXT_VERSION_FILES" | while IFS= read -r file; do
+                        if [ -f "$file" ]; then
+                            # Use sed to replace [NEXT_VERSION] with the new version.
+                            if command -v sed >/dev/null 2>&1; then
+                                sed_inplace "s/\[NEXT_VERSION\]/$NEW_VERSION/g" "$file"
+                                echo "Updated [NEXT_VERSION] → $NEW_VERSION in $file"
+                            fi
+                        fi
+                    done
+                else
+                    echo "No [NEXT_VERSION] placeholders found."
+                fi
+            else
+                echo "grep command not available, skipping [NEXT_VERSION] replacement."
+            fi
 
             # Commit changes
             git add . >/dev/null 2>&1
