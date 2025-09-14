@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.15] - 2025-09-14
+* BUG: Fix package_version_bump_interactive.
+
 ## [0.6.14] - 2025-09-14
 * BUG: Use package_version_bump_interactive instead of inline implementation in git_create_release.
 

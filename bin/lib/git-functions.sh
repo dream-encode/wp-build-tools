@@ -457,9 +457,7 @@ function git_create_release_quiet() {
                 NEW_VERSION=$(calculate_new_version "$CURRENT_VERSION" "$bump_type")
             fi
 
-            # Use the proper abstracted version bump function instead of inline implementation
-            # This ensures all file types are updated consistently (package.json, composer.json,
-            # manifest.json, WordPress files, [NEXT_VERSION] placeholders, etc.)
+            # Use the abstracted version bump function which handles all file types
             package_version_bump_auto "$bump_type" >/dev/null
 
             # Commit changes

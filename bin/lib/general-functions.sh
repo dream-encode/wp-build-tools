@@ -7,6 +7,18 @@ if ! command -v get_platform >/dev/null 2>&1; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     source "$SCRIPT_DIR/platform-utils.sh"
 fi
+
+# Source git functions if not already loaded (needed for gc function)
+if ! command -v gc >/dev/null 2>&1; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$SCRIPT_DIR/git-functions.sh"
+fi
+
+# Source wp functions if not already loaded (needed for wp_plugin_bump_version function)
+if ! command -v wp_plugin_bump_version >/dev/null 2>&1; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$SCRIPT_DIR/wp-functions.sh"
+fi
 # Copied from general-functions.bashrc.
 
 # Color helper function for better terminal compatibility.
