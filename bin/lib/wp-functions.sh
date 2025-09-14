@@ -114,14 +114,10 @@ function wp_plugin_update_pot() {
 }
 
 function is_wp_block_plugin() {
-    if [ -d "src" ] && [ -d "build" ] && [ -f "package.json" ]; then
-        if jq -e '.dependencies["@wordpress/scripts"] or .devDependencies["@wordpress/scripts"] or .dependencies["@wordpress/blocks"] or .devDependencies["@wordpress/blocks"]' package.json >/dev/null 2>&1; then
+    if [ -d "src" ] && [ -f "package.json" ]; then
+        if find . -name "block.json" -not -path "./node_modules/*" -not -path "./vendor/*" | grep -q .; then
             return 0
         fi
-    fi
-
-    if find . -name "block.json" -not -path "./node_modules/*" -not -path "./vendor/*" | grep -q .; then
-        return 0
     fi
 
     return 1
