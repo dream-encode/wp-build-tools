@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.7.0] - 2025-09-14
+* ENH: Add custom ZIP exclusions support.
+
 ## [0.6.20] - 2025-09-14
 * BUG: Exclude action-scheduler and libraries from debugging code check.
 

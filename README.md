@@ -179,6 +179,32 @@ To enable ZIP asset creation, add this line to your main plugin file header:
  */
 ```
 
+### Custom ZIP Exclusions
+
+You can customize which files and directories are excluded from ZIP files by creating a `.wp-build-exclusions` file in your project root:
+
+```bash
+# .wp-build-exclusions
+# Custom exclusions for ZIP files (one per line)
+# Lines starting with # are comments
+
+# Exclude custom directories
+development
+local-config
+temp-files
+
+# Exclude file patterns
+*.dev
+*.local
+*.backup
+
+# Exclude documentation
+docs
+examples
+```
+
+These exclusions are **added to** the default exclusions (like `node_modules`, `vendor`, `.git`, etc.). The custom exclusions work with all compression tools (zip, 7z).
+
 ### Changelog Format
 
 The script expects a `CHANGELOG.md` file in Keep a Changelog format with an "0.6.1 - [UNRELEASED]" entry at the top:

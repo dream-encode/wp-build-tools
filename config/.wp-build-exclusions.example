@@ -1,0 +1,35 @@
+# wp-build-tools ZIP Exclusions Configuration
+# 
+# Copy this file to your project root as .wp-build-exclusions to customize
+# which files and directories are excluded from ZIP files during release.
+#
+# These exclusions are added to the default exclusions list.
+# Lines starting with # are comments and will be ignored.
+# Empty lines are also ignored.
+
+# Example: Exclude custom development directories
+# development
+# local-config
+
+# Example: Exclude specific file patterns
+# *.dev
+# *.local
+# temp-*
+
+# Example: Exclude third-party libraries that shouldn't be in releases
+# external-libs
+# vendor-custom
+
+# Example: Exclude documentation or development files
+# docs
+# examples
+# *.md
+
+# Example: Exclude IDE or editor files
+# .idea
+# *.sublime-*
+
+# Example: Exclude backup files
+# *.bak
+# *.backup
+# *~

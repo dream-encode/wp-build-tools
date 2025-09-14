@@ -846,7 +846,22 @@ function zip_folder() {
         default_exclusions+=("src" "./src" "*/src")
     fi
 
-    local exclusions=("${ZIP_EXCLUSIONS[@]:-${default_exclusions[@]}}")
+    # Load custom exclusions from .wp-build-exclusions file if it exists
+    local custom_exclusions=()
+    if [ -f ".wp-build-exclusions" ]; then
+        while IFS= read -r line; do
+            # Skip empty lines and comments (lines starting with #)
+            if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
+                custom_exclusions+=("$line")
+            fi
+        done < ".wp-build-exclusions"
+    fi
+
+    # Combine default exclusions with custom exclusions
+    local all_exclusions=("${default_exclusions[@]}" "${custom_exclusions[@]}")
+
+    # Use ZIP_EXCLUSIONS environment variable if set, otherwise use combined exclusions
+    local exclusions=("${ZIP_EXCLUSIONS[@]:-${all_exclusions[@]}}")
 
     if [ "$quiet_mode" != "true" ]; then
         echo "Creating ZIP file: $zip_filename"
