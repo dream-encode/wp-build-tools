@@ -1,7 +1,8 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Exclude /src in block plugin release assets.
+* BUG: Make wp_is_block_plugin more robust.
 
 ## [0.6.9] - 2025-09-13
 * BUG: Fix changelog next version template included in release assets.
