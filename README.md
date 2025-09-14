@@ -205,6 +205,8 @@ examples
 
 These exclusions are **added to** the default exclusions (like `node_modules`, `vendor`, `.git`, etc.). The custom exclusions work with all compression tools (zip, 7z).
 
+**Note:** The `.wp-build-exclusions` file itself is automatically excluded from ZIP files. The exclusions are read early in the release process to ensure the configuration file is available when needed.
+
 ### Changelog Format
 
 The script expects a `CHANGELOG.md` file in Keep a Changelog format with an "0.6.1 - [UNRELEASED]" entry at the top:
@@ -255,7 +257,7 @@ set -x  # Enable debug output
 bin/
 ├── release.sh                      # Main release script with CLI flags
 ├── wp-release.js                   # Node.js wrapper script
-├── setup.js                       # Setup command (npx @dream-encode/wp-build-tools setup)
+├── setup.js                        # Setup command (npx @dream-encode/wp-build-tools setup)
 └── lib/
     ├── platform-utils.sh           # Cross-platform utilities
     ├── tool-checker.sh             # Tool availability checking

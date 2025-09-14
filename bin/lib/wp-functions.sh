@@ -452,6 +452,25 @@ function wp_create_release() {
     local PACKAGE_MANAGER=$(get_package_manager_for_project)
     local CURRENT_VERSION=$(get_version_package_json)
 
+    # Read custom ZIP exclusions early (before release branch creation)
+    # This ensures .wp-build-exclusions is available when we need it
+    local custom_exclusions=()
+    if [ -f ".wp-build-exclusions" ]; then
+        while IFS= read -r line; do
+            # Skip empty lines and comments (lines starting with #)
+            if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
+                custom_exclusions+=("$line")
+            fi
+        done < ".wp-build-exclusions"
+
+        # Export custom exclusions for use during ZIP creation
+        # Include .wp-build-exclusions itself in the exclusions
+        export WP_BUILD_CUSTOM_EXCLUSIONS=("${custom_exclusions[@]}" ".wp-build-exclusions")
+    else
+        # Still exclude .wp-build-exclusions even if file doesn't exist
+        export WP_BUILD_CUSTOM_EXCLUSIONS=(".wp-build-exclusions")
+    fi
+
     # Step 1: Pre-release checks
     step_start "[1/6] 🔍 Running pre-release checks"
     if ! wp_check_debugging_code --quiet; then
