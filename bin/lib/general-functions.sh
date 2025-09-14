@@ -7,18 +7,6 @@ if ! command -v get_platform >/dev/null 2>&1; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     source "$SCRIPT_DIR/platform-utils.sh"
 fi
-
-# Source git functions if not already loaded (needed for gc function)
-if ! command -v gc >/dev/null 2>&1; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    source "$SCRIPT_DIR/git-functions.sh"
-fi
-
-# Source wp functions if not already loaded (needed for wp_plugin_bump_version function)
-if ! command -v wp_plugin_bump_version >/dev/null 2>&1; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    source "$SCRIPT_DIR/wp-functions.sh"
-fi
 # Copied from general-functions.bashrc.
 
 # Color helper function for better terminal compatibility.
@@ -404,7 +392,11 @@ function package_version_bump_interactive() {
 
     # Update WordPress plugin/theme main file.
     if [ "$IS_WP_PLUGIN" = true ] || [ "$IS_WP_THEME" = true ]; then
-        wp_plugin_bump_version "$NEW_VERSION"
+        if command -v wp_plugin_bump_version >/dev/null 2>&1; then
+            wp_plugin_bump_version "$NEW_VERSION"
+        else
+            echo "Warning: wp_plugin_bump_version function not available. Skipping WordPress file updates."
+        fi
     fi
 
     # Replace [NEXT_VERSION] placeholders in all files.
@@ -464,7 +456,11 @@ function package_version_bump_interactive() {
 
     # Commit changes.
     git add .
-    gc "Version $NEW_VERSION bump."
+    if command -v gc >/dev/null 2>&1; then
+        gc "Version $NEW_VERSION bump."
+    else
+        git commit -m "Version $NEW_VERSION bump."
+    fi
 
     echo "Version bump to $NEW_VERSION complete."
 }
@@ -525,7 +521,11 @@ function package_version_bump_auto() {
 
     # Update WordPress plugin/theme main file
     if [ "$IS_WP_PLUGIN" = true ] || [ "$IS_WP_THEME" = true ]; then
-        wp_plugin_bump_version "$new_version"
+        if command -v wp_plugin_bump_version >/dev/null 2>&1; then
+            wp_plugin_bump_version "$new_version"
+        else
+            echo "Warning: wp_plugin_bump_version function not available. Skipping WordPress file updates."
+        fi
     fi
 
     # Replace [NEXT_VERSION] placeholders in all files
@@ -568,7 +568,11 @@ function package_version_bump_auto() {
 
     # Commit changes
     git add .
-    gc "Version $new_version bump."
+    if command -v gc >/dev/null 2>&1; then
+        gc "Version $new_version bump."
+    else
+        git commit -m "Version $new_version bump."
+    fi
 
     echo "Version bump to $new_version complete."
 }

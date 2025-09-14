@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.6.15] - 2025-09-14
 * BUG: Fix package_version_bump_interactive.
 
