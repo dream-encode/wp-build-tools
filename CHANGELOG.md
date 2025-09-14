@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.16] - 2025-09-14
+* BUG: Fix dependencies.
+
 ## [0.6.15] - 2025-09-14
 * BUG: Fix package_version_bump_interactive.
 
