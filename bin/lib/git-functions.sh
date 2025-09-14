@@ -478,7 +478,6 @@ function git_create_release_quiet() {
             fi
 
             # Replace [NEXT_VERSION] placeholders in all files.
-            echo "Searching for [NEXT_VERSION] placeholders to replace with $NEW_VERSION..."
             local NEXT_VERSION_FILES
 
             # Find all files containing [NEXT_VERSION] (excluding binary files, node_modules, vendor, .git).
@@ -510,27 +509,16 @@ function git_create_release_quiet() {
                     2>/dev/null || true)
 
                 if [ -n "$NEXT_VERSION_FILES" ]; then
-                    echo "Found [NEXT_VERSION] placeholders in the following files:"
-                    echo "$NEXT_VERSION_FILES" | while IFS= read -r file; do
-                        echo "  - $file"
-                    done
-                    echo ""
-
                     # Replace [NEXT_VERSION] with the actual version in each file.
                     echo "$NEXT_VERSION_FILES" | while IFS= read -r file; do
                         if [ -f "$file" ]; then
                             # Use sed to replace [NEXT_VERSION] with the new version.
                             if command -v sed >/dev/null 2>&1; then
                                 sed_inplace "s/\[NEXT_VERSION\]/$NEW_VERSION/g" "$file"
-                                echo "Updated [NEXT_VERSION] → $NEW_VERSION in $file"
                             fi
                         fi
                     done
-                else
-                    echo "No [NEXT_VERSION] placeholders found."
                 fi
-            else
-                echo "grep command not available, skipping [NEXT_VERSION] replacement."
             fi
 
             # Commit changes

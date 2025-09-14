@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.18] - 2025-09-14
+* BUG: Remove extra output during next version replacement.
+
 ## [0.6.17] - 2025-09-14
 * BUG: Revert back to the inline implementation.
 
