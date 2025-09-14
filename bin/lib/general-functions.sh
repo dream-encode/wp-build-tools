@@ -846,15 +846,21 @@ function zip_folder() {
         default_exclusions+=("src" "./src" "*/src")
     fi
 
-    # Load custom exclusions from .wp-build-exclusions file if it exists
+    # Load custom exclusions - prioritize early-read exclusions from wp_create_release
     local custom_exclusions=()
-    if [ -f ".wp-build-exclusions" ]; then
+    if [ -n "${WP_BUILD_CUSTOM_EXCLUSIONS[*]}" ]; then
+        # Use exclusions read early in wp_create_release (includes .wp-build-exclusions file itself)
+        custom_exclusions=("${WP_BUILD_CUSTOM_EXCLUSIONS[@]}")
+    elif [ -f ".wp-build-exclusions" ]; then
+        # Fallback: read .wp-build-exclusions file if it exists (for direct zip_folder calls)
         while IFS= read -r line; do
             # Skip empty lines and comments (lines starting with #)
             if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
                 custom_exclusions+=("$line")
             fi
         done < ".wp-build-exclusions"
+        # Add .wp-build-exclusions itself to exclusions
+        custom_exclusions+=(".wp-build-exclusions")
     fi
 
     # Combine default exclusions with custom exclusions
