@@ -1,7 +1,8 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* ENH: Add more output to the version bump.
+* BUG: Maybe fix postinstall.
 
 ## [0.6.18] - 2025-09-14
 * BUG: Remove extra output during next version replacement.
