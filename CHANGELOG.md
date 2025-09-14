@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.6.18] - 2025-09-14
 * BUG: Remove extra output during next version replacement.
 
