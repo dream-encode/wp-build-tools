@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.6.11] - 2025-09-13
 * BUG: Only replace the version string in the WP plugin file, not other @since references.
 

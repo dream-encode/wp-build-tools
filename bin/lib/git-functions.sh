@@ -491,7 +491,7 @@ function git_create_release_quiet() {
     git tag -a "v$CURRENT_VERSION" -m "Version $CURRENT_VERSION" >/dev/null 2>&1
     git push -q -u origin "v$CURRENT_VERSION" >/dev/null 2>&1
 
-    echo "    - Version v$CURRENT_VERSION tagged."
+    echo "    - Version $CURRENT_VERSION tagged."
 
     # Create GitHub release (quietly)
     github_create_release "$CURRENT_VERSION" >/dev/null 2>&1

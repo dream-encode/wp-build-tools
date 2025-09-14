@@ -5,6 +5,12 @@
 
 set -e
 
+# Ensure proper Unicode/emoji support in terminal output
+# This fixes emoji display issues when running via yarn vs npm
+export LANG="${LANG:-en_US.UTF-8}"
+export LC_ALL="${LC_ALL:-en_US.UTF-8}"
+export TERM="${TERM:-xterm-256color}"
+
 # Get the directory where this script is located.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
