@@ -457,13 +457,10 @@ function git_create_release_quiet() {
                 NEW_VERSION=$(calculate_new_version "$CURRENT_VERSION" "$bump_type")
             fi
 
-            # Update package.json
-            bump_version_package_json "$NEW_VERSION" >/dev/null
-
-            # Update WordPress plugin/theme files if applicable
-            if [[ $PWD/ = */wp-content/plugins/* ]] || [[ $PWD/ = */wp-content/themes/* ]]; then
-                wp_plugin_bump_version "$NEW_VERSION" >/dev/null 2>&1
-            fi
+            # Use the proper abstracted version bump function instead of inline implementation
+            # This ensures all file types are updated consistently (package.json, composer.json,
+            # manifest.json, WordPress files, [NEXT_VERSION] placeholders, etc.)
+            package_version_bump_auto "$bump_type" >/dev/null
 
             # Commit changes
             git add . >/dev/null 2>&1

@@ -404,15 +404,8 @@ function wp_plugin_bump_version() {
         echo "Updated version in $FILENAME header."
     fi
 
-    # Update version constant if it exists
-    local PLUGIN_CONSTANT=$(echo "$PLUGIN_NAME" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
-    if grep -q "define.*${PLUGIN_CONSTANT}_VERSION" "$FILENAME"; then
-        sed_inplace "s/define.*${PLUGIN_CONSTANT}_VERSION.*$/define( '${PLUGIN_CONSTANT}_VERSION', '$NEW_VERSION' );/" "$FILENAME"
-        echo "Updated ${PLUGIN_CONSTANT}_VERSION constant in $FILENAME."
-    fi
-
-    # Update version constant in constants files
-    local CONSTANTS_FILES=()
+    # Update version constant in the main plugin file and any constants files.
+    local CONSTANTS_FILES=("$FILENAME")
     if [ -f "includes/${PLUGIN_NAME}-constants.php" ]; then
         CONSTANTS_FILES+=("includes/${PLUGIN_NAME}-constants.php")
     fi
