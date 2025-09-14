@@ -598,7 +598,7 @@ function wp_create_release() {
     wp_post_create_release
 
     echo ""
-    echo "🎊 SUCCESS: WordPress release v$RELEASE_VERSION created with asset!"
+    echo "🎊 SUCCESS: WordPress release $RELEASE_VERSION created with asset!"
     echo "📋 Zip: $ZIP_FILE"
 
     # Do we want to trigger Git Remote Updater to force update the plugin/theme now?
