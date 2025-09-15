@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.7.3] - 2025-09-15
 * BUG: Fix a local error.
 
 ## [0.7.2] - 2025-09-15
