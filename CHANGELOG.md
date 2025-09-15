@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.7.1] - 2025-09-14
 * ENH: Add early exclusion reading to wp_create_release.
 
