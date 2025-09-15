@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* TSK: Bump release to resolve npmcr error.
+
 ## [0.7.3] - 2025-09-15
 * BUG: Fix a local error.
 
