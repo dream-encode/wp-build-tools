@@ -500,7 +500,7 @@ function wp_create_release() {
             build_exit_code=$?
 
             if [ $build_exit_code -eq 0 ]; then
-                printf " ✅\n"
+                printf "✅\n"
             else
                 printf "\n❌ Build process failed. Please fix build errors before releasing.\n"
                 printf "💡 Run '$package_manager run $build_script' to see detailed errors.\n"
@@ -509,11 +509,12 @@ function wp_create_release() {
                 printf "\n"
                 return 1
             fi
+
+            echo "✅ Pre-release checks complete!"
         else
             step_done
         fi
     fi
-
 
     # Detect WordPress project types
     local IS_WP_PLUGIN=false
