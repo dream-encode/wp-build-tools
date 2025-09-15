@@ -509,9 +509,9 @@ function wp_create_release() {
                 printf "\n"
                 return 1
             fi
+        else
+            step_done
         fi
-    else
-        step_done
     fi
 
 
