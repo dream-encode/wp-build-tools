@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.7.5] - 2025-09-15
 * TWK: Format output during pre-release checks a bit nicer.
 
 ## [0.7.4] - 2025-09-15
