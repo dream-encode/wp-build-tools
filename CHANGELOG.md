@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* TWK: Format output during pre-release checks a bit nicer.
 
 ## [0.7.4] - 2025-09-15
 * TSK: Bump release to resolve npmcr error.
