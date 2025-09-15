@@ -106,8 +106,8 @@ yarn release
    - Updates POT files using WP-CLI (if available)
 
 5. **Changelog management**
-   - Looks for "0.6.1 - [UNRELEASED]" entry at top of CHANGELOG.md
-   - Replaces "0.6.1 - [UNRELEASED]" with "[X.X.X.X] - YYYY-MM-DD" format
+   - Looks for "[NEXT_VERSION] - [UNRELEASED]" entry at top of CHANGELOG.md
+   - Replaces "[NEXT_VERSION] - [UNRELEASED]" with "[X.X.X.X] - YYYY-MM-DD" format
 
 6. **Git operations**
    - Commits version bump changes

@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.7.2] - 2025-09-15
 * BUG: Add pre-release check for missing dependencies that might cause errors during the production build.
 
