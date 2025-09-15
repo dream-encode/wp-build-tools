@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.4] - 2025-09-15
+* TSK: Bump release to resolve npmcr error.
+
+## [0.7.3] - 2025-09-15
+* BUG: Fix a local error.
+
 ## [0.7.2] - 2025-09-15
 * BUG: Add pre-release check for missing dependencies that might cause errors during the production build.
 

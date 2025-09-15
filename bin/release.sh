@@ -257,9 +257,9 @@ if [ "$RUN_TESTS" = true ]; then
 
     # Test build process (for WordPress plugins/themes with build scripts)
     if [ -f "package.json" ] && command -v jq >/dev/null 2>&1; then
-        local package_manager=$(get_package_manager_for_project)
-        local has_build_script=false
-        local build_script=""
+        package_manager=$(get_package_manager_for_project)
+        has_build_script=false
+        build_script=""
 
         # Check for production or build scripts
         if jq -e '.scripts.production' package.json >/dev/null 2>&1; then
@@ -274,9 +274,6 @@ if [ "$RUN_TESTS" = true ]; then
             echo "   🔨 Testing build process..."
 
             # Quick build test - run actual build and capture output
-            local build_output
-            local build_exit_code
-
             build_output=$($package_manager run $build_script 2>&1)
             build_exit_code=$?
 
