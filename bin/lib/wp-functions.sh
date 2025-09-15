@@ -490,7 +490,7 @@ function wp_create_release() {
         fi
 
         if [ "$has_build_script" = true ]; then
-            printf "\n🔨 Testing build process..."
+            printf "\n  🔨 Testing build process..."
 
             # Run build test and capture output
             local build_output
@@ -510,9 +510,10 @@ function wp_create_release() {
                 return 1
             fi
         fi
+    else
+        step_done
     fi
 
-    step_done
 
     # Detect WordPress project types
     local IS_WP_PLUGIN=false
