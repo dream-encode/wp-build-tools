@@ -454,22 +454,18 @@ function wp_create_release() {
 
     # Read custom ZIP exclusions early (before release branch creation)
     # This ensures .wp-build-exclusions is available when we need it
-    local custom_exclusions=()
+    local temp_exclusions_file="/tmp/wp-build-exclusions-$$"
     if [ -f ".wp-build-exclusions" ]; then
-        while IFS= read -r line; do
-            # Skip empty lines and comments (lines starting with #)
-            if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
-                custom_exclusions+=("$line")
-            fi
-        done < ".wp-build-exclusions"
-
-        # Export custom exclusions for use during ZIP creation
-        # Include .wp-build-exclusions itself in the exclusions
-        export WP_BUILD_CUSTOM_EXCLUSIONS=("${custom_exclusions[@]}" ".wp-build-exclusions")
+        # Copy custom exclusions to temp file, adding .wp-build-exclusions itself
+        grep -v '^[[:space:]]*#' .wp-build-exclusions | grep -v '^[[:space:]]*$' > "$temp_exclusions_file"
+        echo ".wp-build-exclusions" >> "$temp_exclusions_file"
     else
-        # Still exclude .wp-build-exclusions even if file doesn't exist
-        export WP_BUILD_CUSTOM_EXCLUSIONS=(".wp-build-exclusions")
+        # Just exclude .wp-build-exclusions file itself
+        echo ".wp-build-exclusions" > "$temp_exclusions_file"
     fi
+
+    # Export temp file path for use during ZIP creation
+    export WP_BUILD_EXCLUSIONS_FILE="$temp_exclusions_file"
 
     # Step 1: Pre-release checks
     step_start "[1/6] 🔍 Running pre-release checks"
@@ -477,6 +473,45 @@ function wp_create_release() {
         printf "\n❌ Found debugging code in plugin. Please correct before releasing.\n"
         return 1
     fi
+
+    # Check build process if build scripts exist
+    if [ -f "package.json" ] && command -v jq >/dev/null 2>&1; then
+        local package_manager=$(get_package_manager_for_project)
+        local has_build_script=false
+        local build_script=""
+
+        # Check for production or build scripts
+        if jq -e '.scripts.production' package.json >/dev/null 2>&1; then
+            has_build_script=true
+            build_script="production"
+        elif jq -e '.scripts.build' package.json >/dev/null 2>&1; then
+            has_build_script=true
+            build_script="build"
+        fi
+
+        if [ "$has_build_script" = true ]; then
+            printf "\n🔨 Testing build process..."
+
+            # Run build test and capture output
+            local build_output
+            local build_exit_code
+
+            build_output=$($package_manager run $build_script 2>&1)
+            build_exit_code=$?
+
+            if [ $build_exit_code -eq 0 ]; then
+                printf " ✅\n"
+            else
+                printf "\n❌ Build process failed. Please fix build errors before releasing.\n"
+                printf "💡 Run '$package_manager run $build_script' to see detailed errors.\n"
+                printf "📋 Build error preview:\n"
+                echo "$build_output" | tail -5 | sed 's/^/   /'
+                printf "\n"
+                return 1
+            fi
+        fi
+    fi
+
     step_done
 
     # Detect WordPress project types
@@ -621,6 +656,12 @@ function wp_create_release() {
     echo ""
     echo "🎊 SUCCESS: WordPress release $RELEASE_VERSION created with asset!"
     echo "📋 Zip: $ZIP_FILE"
+
+    # Clean up temporary exclusions file
+    if [ -n "$WP_BUILD_EXCLUSIONS_FILE" ] && [ -f "$WP_BUILD_EXCLUSIONS_FILE" ]; then
+        rm -f "$WP_BUILD_EXCLUSIONS_FILE"
+        unset WP_BUILD_EXCLUSIONS_FILE
+    fi
 
     # Do we want to trigger Git Remote Updater to force update the plugin/theme now?
     # confirm "Do you want to remote update the plugin/theme to this new version now?"

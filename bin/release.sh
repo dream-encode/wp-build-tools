@@ -255,6 +255,47 @@ if [ "$RUN_TESTS" = true ]; then
         echo "   ℹ️  No CHANGELOG.md found"
     fi
 
+    # Test build process (for WordPress plugins/themes with build scripts)
+    if [ -f "package.json" ] && command -v jq >/dev/null 2>&1; then
+        local package_manager=$(get_package_manager_for_project)
+        local has_build_script=false
+        local build_script=""
+
+        # Check for production or build scripts
+        if jq -e '.scripts.production' package.json >/dev/null 2>&1; then
+            has_build_script=true
+            build_script="production"
+        elif jq -e '.scripts.build' package.json >/dev/null 2>&1; then
+            has_build_script=true
+            build_script="build"
+        fi
+
+        if [ "$has_build_script" = true ]; then
+            echo "   🔨 Testing build process..."
+
+            # Quick build test - run actual build and capture output
+            local build_output
+            local build_exit_code
+
+            build_output=$($package_manager run $build_script 2>&1)
+            build_exit_code=$?
+
+            if [ $build_exit_code -eq 0 ]; then
+                echo "   ✅ Build process successful"
+            else
+                echo "   ❌ Build process failed"
+                echo "   💡 Run '$package_manager run $build_script' to see detailed errors"
+                echo "   ⚠️  Release will fail during asset creation step"
+
+                # Show first few lines of error for quick diagnosis
+                echo "   📋 Build error preview:"
+                echo "$build_output" | tail -5 | sed 's/^/      /'
+            fi
+        else
+            echo "   ℹ️  No build script detected"
+        fi
+    fi
+
     echo ""
     echo "🎉 Comprehensive test complete!"
     echo ""
