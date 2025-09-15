@@ -2,6 +2,7 @@
 
 ## [NEXT_VERSION] - [UNRELEASED]
 * BUG: Only omit step_done if no build script.
+* BUG: More formatting during pre-release checks.
 
 ## [0.7.5] - 2025-09-15
 * TWK: Format output during pre-release checks a bit nicer.
