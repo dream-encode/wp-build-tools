@@ -660,12 +660,44 @@ function wp_create_release() {
         return 1
     fi
 
-    # Verify ZIP file was actually created
-    if [ -z "$ZIP_FILE_PATH" ] || [ ! -f "$ZIP_FILE_PATH" ]; then
-        printf "\n❌ Error: ZIP file was not created or path is invalid\n"
-        printf "   Expected path: $ZIP_FILE_PATH\n"
+    # Verify ZIP file was actually created and wait for it to be available
+    if [ -z "$ZIP_FILE_PATH" ]; then
+        printf "\n❌ Error: ZIP file path is empty\n"
         return 1
     fi
+
+    # Wait for ZIP file to be fully written to disk (with retry logic)
+    local max_attempts=10
+    local attempt=1
+    local wait_seconds=1
+
+    while [ $attempt -le $max_attempts ]; do
+        if [ -f "$ZIP_FILE_PATH" ] && [ -r "$ZIP_FILE_PATH" ]; then
+            # File exists and is readable, check if it has a reasonable size
+            # Use cross-platform method to get file size
+            local file_size
+            if command -v stat >/dev/null 2>&1; then
+                file_size=$(stat -c%s "$ZIP_FILE_PATH" 2>/dev/null || echo "0")
+            else
+                # Fallback for systems without stat
+                file_size=$(wc -c < "$ZIP_FILE_PATH" 2>/dev/null || echo "0")
+            fi
+
+            if [ "$file_size" -gt 1024 ]; then  # At least 1KB
+                break
+            fi
+        fi
+
+        if [ $attempt -eq $max_attempts ]; then
+            printf "\n❌ Error: ZIP file was not created or is not accessible after $max_attempts attempts\n"
+            printf "   Expected path: $ZIP_FILE_PATH\n"
+            return 1
+        fi
+
+        sleep $wait_seconds
+        attempt=$((attempt + 1))
+        wait_seconds=$((wait_seconds + 1))  # Increase wait time with each attempt
+    done
 
     local ZIP_FILE=$(basename "$ZIP_FILE_PATH")
     step_done
@@ -673,10 +705,25 @@ function wp_create_release() {
     # Step 6: Upload the asset to the release
     step_start "[6/6] ⬆️  Uploading release asset to GitHub"
 
-    # Check if ZIP file exists before attempting upload
-    if [ ! -f "$ZIP_FILE_PATH" ]; then
-        printf "\n❌ Error: ZIP file not found at $ZIP_FILE_PATH\n"
-        printf "   ZIP creation may have failed. Check the build process.\n"
+    # Double-check ZIP file accessibility before upload
+    if [ ! -f "$ZIP_FILE_PATH" ] || [ ! -r "$ZIP_FILE_PATH" ]; then
+        printf "\n❌ Error: ZIP file not found or not readable at $ZIP_FILE_PATH\n"
+        printf "   ZIP creation may have failed or file system latency issue.\n"
+        return 1
+    fi
+
+    # Verify file size is reasonable
+    local file_size
+    if command -v stat >/dev/null 2>&1; then
+        file_size=$(stat -c%s "$ZIP_FILE_PATH" 2>/dev/null || echo "0")
+    else
+        # Fallback for systems without stat
+        file_size=$(wc -c < "$ZIP_FILE_PATH" 2>/dev/null || echo "0")
+    fi
+
+    if [ "$file_size" -lt 1024 ]; then
+        printf "\n❌ Error: ZIP file appears to be too small ($file_size bytes)\n"
+        printf "   This may indicate an incomplete or corrupted file.\n"
         return 1
     fi
 

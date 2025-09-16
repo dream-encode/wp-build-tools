@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.8.4] - 2025-09-16
 * BUG: Trying another fix for theme builds with vite.
 
