@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.8.0] - 2025-09-16
 * ENH: Add more tests.
 * ENH: Abstract some more.
 
