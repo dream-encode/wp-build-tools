@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Add some debugging to the release asset upload.
+
 ## [0.8.5] - 2025-09-16
 * BUG: Wait for the Zip file to be available before uploading to GitHub.
 
