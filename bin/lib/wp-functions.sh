@@ -728,14 +728,34 @@ function wp_create_release() {
     fi
 
     # Attempt to upload with error handling
-    if gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" >/dev/null 2>&1; then
+    printf "\n🔍 Debug: Attempting upload with command: gh release upload \"v$RELEASE_VERSION\" \"$ZIP_FILE_PATH\"\n"
+
+    local upload_output
+    upload_output=$(gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" 2>&1)
+    local upload_exit_code=$?
+
+    printf "🔍 Debug: Upload exit code: $upload_exit_code\n"
+    printf "🔍 Debug: Upload output: '$upload_output'\n"
+
+    if [ $upload_exit_code -eq 0 ]; then
+        printf "✅ Upload successful!\n"
         step_done
     else
-        printf "\n❌ Error: Failed to upload release asset to GitHub\n"
-        printf "   Release: v$RELEASE_VERSION\n"
-        printf "   ZIP file: $ZIP_FILE_PATH\n"
-        printf "   Check GitHub CLI authentication and release existence.\n"
-        return 1
+        # Check if the error is because the asset already exists
+        if echo "$upload_output" | grep -q "already exists\|same name already exists"; then
+            printf "\n⚠️  Asset already exists on GitHub release\n"
+            printf "   This may happen if the release was run multiple times.\n"
+            printf "   The release asset is available on GitHub.\n"
+            step_done
+        else
+            printf "\n❌ Error: Failed to upload release asset to GitHub\n"
+            printf "   Release: v$RELEASE_VERSION\n"
+            printf "   ZIP file: $ZIP_FILE_PATH\n"
+            printf "   Exit code: $upload_exit_code\n"
+            printf "   Error output: '$upload_output'\n"
+            printf "   Check GitHub CLI authentication and release existence.\n"
+            return 1
+        fi
     fi
 
     wp_post_create_release
