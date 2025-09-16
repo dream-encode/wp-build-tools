@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.8.6] - 2025-09-16
 * BUG: Add some debugging to the release asset upload.
 
 ## [0.8.5] - 2025-09-16
