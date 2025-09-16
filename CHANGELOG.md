@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Fix MMWOP release asset detection.
+
 ## [0.7.6] - 2025-09-15
 * BUG: Only omit step_done if no build script.
 * BUG: More formatting during pre-release checks.
