@@ -731,14 +731,36 @@ function wp_create_release() {
     printf "\n🔍 Debug: Attempting upload with command: gh release upload \"v$RELEASE_VERSION\" \"$ZIP_FILE_PATH\"\n"
 
     local upload_output
-    upload_output=$(gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" 2>&1)
-    local upload_exit_code=$?
+    local upload_exit_code
+
+    # Use timeout to prevent hanging (5 minutes should be plenty for upload)
+    if command -v timeout >/dev/null 2>&1; then
+        upload_output=$(timeout 300 gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" 2>&1)
+        upload_exit_code=$?
+        if [ $upload_exit_code -eq 124 ]; then
+            printf "🔍 Debug: Upload timed out after 5 minutes\n"
+            upload_output="Upload timed out after 5 minutes"
+        fi
+    else
+        upload_output=$(gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" 2>&1)
+        upload_exit_code=$?
+    fi
 
     printf "🔍 Debug: Upload exit code: $upload_exit_code\n"
     printf "🔍 Debug: Upload output: '$upload_output'\n"
 
-    if [ $upload_exit_code -eq 0 ]; then
-        printf "✅ Upload successful!\n"
+    # Verify if the asset actually exists on GitHub regardless of command exit code
+    local asset_name=$(basename "$ZIP_FILE_PATH")
+    printf "🔍 Debug: Checking if asset '$asset_name' exists on release v$RELEASE_VERSION...\n"
+
+    local asset_check_output
+    asset_check_output=$(gh release view "v$RELEASE_VERSION" --json assets --jq ".assets[].name" 2>/dev/null | grep -F "$asset_name" || echo "")
+
+    if [ -n "$asset_check_output" ]; then
+        printf "✅ Asset verified on GitHub release!\n"
+        step_done
+    elif [ $upload_exit_code -eq 0 ]; then
+        printf "✅ Upload command succeeded!\n"
         step_done
     else
         # Check if the error is because the asset already exists
@@ -753,6 +775,7 @@ function wp_create_release() {
             printf "   ZIP file: $ZIP_FILE_PATH\n"
             printf "   Exit code: $upload_exit_code\n"
             printf "   Error output: '$upload_output'\n"
+            printf "   Asset verification: Asset not found on GitHub\n"
             printf "   Check GitHub CLI authentication and release existence.\n"
             return 1
         fi

@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.8.6] - 2025-09-16
 * BUG: Add some debugging to the release asset upload.
 
