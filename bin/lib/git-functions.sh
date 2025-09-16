@@ -153,7 +153,7 @@ function validate_git_setup() {
 
 # Create a simple release (without assets)
 function git_create_simple_release() {
-    local CURRENT_VERSION=$(get_version_package_json)
+    local CURRENT_VERSION=$(get_package_json_version)
 
     # Version bump
     confirm "Current version in package.json is $CURRENT_VERSION. Do you want to bump the version now?"
@@ -165,7 +165,7 @@ function git_create_simple_release() {
     fi
 
     # Refresh the version, as it may have changed
-    CURRENT_VERSION=$(get_version_package_json)
+    CURRENT_VERSION=$(get_package_json_version)
 
     # Check if a changelog exists
     if changelog_exists; then
@@ -210,7 +210,7 @@ function git_create_simple_release() {
 
 # Re-create a release (delete and recreate)
 function git_create_rerelease() {
-    local CURRENT_VERSION=$(get_version_package_json)
+    local CURRENT_VERSION=$(get_package_json_version)
 
     git tag -d "v$CURRENT_VERSION"
     git push -q --delete origin "v$CURRENT_VERSION"
@@ -255,7 +255,7 @@ function get_commit_for_tag() {
 }
 
 function git_create_rerelease() {
-    CURRENT_VERSION=$(get_version_package_json)
+    CURRENT_VERSION=$(get_package_json_version)
 
     git tag -d "v$CURRENT_VERSION"
     git push -q --delete origin "v$CURRENT_VERSION"
@@ -287,7 +287,7 @@ function git_create_release() {
     local CURRENT_DIR=$(pwd)
     local BASENAME=$(basename "$CURRENT_DIR")
     local PACKAGE_MANAGER=$(get_package_manager_for_project)
-    local CURRENT_VERSION=$(get_version_package_json)
+    local CURRENT_VERSION=$(get_package_json_version)
 
     CURRENT_BRANCH=$(git branch --show-current)
 
@@ -334,7 +334,7 @@ function git_create_release() {
     fi
 
     # Refresh the version, as it may have changed.
-    CURRENT_VERSION=$(get_version_package_json)
+    CURRENT_VERSION=$(get_package_json_version)
 
     echo "📤 Pushing latest code to main..."
     git push -q
@@ -387,7 +387,7 @@ function git_create_release_quiet() {
     local CURRENT_DIR=$(pwd)
     local BASENAME=$(basename "$CURRENT_DIR")
     local PACKAGE_MANAGER=$(get_package_manager_for_project)
-    local CURRENT_VERSION=$(get_version_package_json)
+    local CURRENT_VERSION=$(get_package_json_version)
 
     CURRENT_BRANCH=$(git branch --show-current)
 
@@ -458,7 +458,7 @@ function git_create_release_quiet() {
             fi
 
             # Update package.json
-            bump_version_package_json "$NEW_VERSION" >/dev/null
+            bump_package_json_version "$NEW_VERSION" >/dev/null
 
             echo "    - Updated package.json."
 
@@ -478,8 +478,8 @@ function git_create_release_quiet() {
 
             # Update WordPress plugin/theme files if applicable
             if [[ $PWD/ = */wp-content/plugins/* ]] || [[ $PWD/ = */wp-content/themes/* ]]; then
-                if command -v wp_plugin_bump_version >/dev/null 2>&1; then
-                    wp_plugin_bump_version "$NEW_VERSION" >/dev/null 2>&1
+                if command -v wp_bump_version >/dev/null 2>&1; then
+                    wp_bump_version "$NEW_VERSION" >/dev/null 2>&1
 
                     echo "    - Updated WordPress plugin/theme files."
                 fi
@@ -538,7 +538,7 @@ function git_create_release_quiet() {
     fi
 
     # Refresh the version, as it may have changed.
-    CURRENT_VERSION=$(get_version_package_json)
+    CURRENT_VERSION=$(get_package_json_version)
 
     changelog_update_current_version
 
@@ -577,7 +577,7 @@ function git_create_release_quiet() {
 }
 
 function git_create_simple_release() {
-    CURRENT_VERSION=$(get_version_package_json)
+    CURRENT_VERSION=$(get_package_json_version)
 
     CURRENT_BRANCH=$(git branch --show-current)
 
@@ -602,7 +602,7 @@ function git_create_simple_release() {
     fi
 
     # Refresh the version, as it may have changed.
-    CURRENT_VERSION=$(get_version_package_json)
+    CURRENT_VERSION=$(get_package_json_version)
 
     # Check if a changelog exists.
     if changelog_exists; then
