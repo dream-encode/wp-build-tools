@@ -127,6 +127,7 @@ function is_wp_block_plugin() {
 
 function wp_plugin_has_release_asset() {
     PLUGIN_FILENAME="$(wp_plugin_filename)"
+    PLUGIN_NAME="$(wp_get_plugin_name)"
 
     if [ "$PLUGIN_NAME" = "max-marine-warehouse-operations-wp-plugin" ];
     then
@@ -500,7 +501,7 @@ function wp_create_release() {
             build_exit_code=$?
 
             if [ $build_exit_code -eq 0 ]; then
-                printf "✅\n"
+                printf "Done!\n"
             else
                 printf "\n❌ Build process failed. Please fix build errors before releasing.\n"
                 printf "💡 Run '$package_manager run $build_script' to see detailed errors.\n"
@@ -510,7 +511,7 @@ function wp_create_release() {
                 return 1
             fi
 
-            echo "✅ Pre-release checks complete!"
+            echo "  ✅ Pre-release checks complete!"
         else
             step_done
         fi
