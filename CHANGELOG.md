@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.3] - 2025-09-16
+* BUG: Maybe fix the theme release asset build.
+
 ## [0.8.2] - 2025-09-16
 * TWK: Only check for release.yml.
 

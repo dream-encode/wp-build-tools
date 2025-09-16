@@ -362,6 +362,11 @@ function wp_zip() {
     else
         build_for_production
     fi
+    build_result=$?
+    if [ $build_result -ne 0 ]; then
+        echo "❌ Error: Build for production failed (exit code: $build_result)"
+        return 1
+    fi
     if [ "$quiet_mode" != "true" ]; then
         step_done
     fi
@@ -374,6 +379,11 @@ function wp_zip() {
         zip_folder "$COPY_DIR" "$ZIP_FILENAME" "$ZIP_NAME" --quiet
     else
         zip_folder "$COPY_DIR" "$ZIP_FILENAME" "$ZIP_NAME"
+    fi
+    zip_result=$?
+    if [ $zip_result -ne 0 ]; then
+        echo "❌ Error: ZIP file creation failed (exit code: $zip_result)"
+        return 1
     fi
     if [ "$quiet_mode" != "true" ]; then
         step_done
