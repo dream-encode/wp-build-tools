@@ -983,6 +983,33 @@ function build_for_production() {
         fi
     fi
 
+    # Handle Composer dependencies first (before npm/yarn build)
+    if [ -f "composer.json" ] && command -v composer >/dev/null 2>&1; then
+        if command -v jq >/dev/null 2>&1; then
+            local require_length=$(jq '.require | length' composer.json 2>/dev/null || echo "0")
+            local has_php_only=$(jq '.require | keys | length == 1 and .[0] == "php"' composer.json 2>/dev/null || echo "false")
+
+            if [[ $require_length -gt 0 ]] && [[ "$has_php_only" != "true" ]]; then
+                if [ "$quiet_mode" != "true" ]; then
+                    echo "📦 Installing Composer production dependencies..."
+                    # Use install instead of update to avoid dependency conflicts
+                    if composer install --quiet --no-dev --optimize-autoloader --no-interaction; then
+                        echo "✅ Composer dependencies installed for production"
+                    else
+                        echo "❌ Composer install failed, trying update as fallback"
+                        composer update --quiet --no-dev --optimize-autoloader --no-interaction
+                        echo "✅ Composer dependencies updated for production"
+                    fi
+                else
+                    # Try install first, fallback to update if it fails
+                    if ! composer install --quiet --no-dev --optimize-autoloader --no-interaction >/dev/null 2>&1; then
+                        composer update --quiet --no-dev --optimize-autoloader --no-interaction >/dev/null 2>&1
+                    fi
+                fi
+            fi
+        fi
+    fi
+
     # Install dependencies and build if needed
     if [ -n "$PACKAGE_MANAGER" ] && [ "$has_build_script" = true ]; then
         if [ "$quiet_mode" != "true" ]; then
@@ -992,7 +1019,7 @@ function build_for_production() {
 
         if [ "$PACKAGE_MANAGER" = "yarn" ]; then
             if [ "$quiet_mode" != "true" ]; then
-                echo "🧹 Installing dependencies with yarn..."
+                echo "🧹 Installing all dependencies (including dev) with yarn..."
                 yarn --silent install --frozen-lockfile
             else
                 if ! yarn --silent install --frozen-lockfile >/dev/null 2>&1; then
@@ -1017,10 +1044,10 @@ function build_for_production() {
             fi
         else
             if [ "$quiet_mode" != "true" ]; then
-                echo "🧹 Installing dependencies with npm..."
-                npm --silent ci
+                echo "🧹 Installing all dependencies (including dev) with npm..."
+                npm --silent install
             else
-                if ! npm --silent ci >/dev/null 2>&1; then
+                if ! npm --silent install >/dev/null 2>&1; then
                     return 1
                 fi
             fi
@@ -1073,44 +1100,7 @@ function build_for_production() {
         fi
     fi
 
-    # Handle Composer dependencies if they exist
-    if [ -f "composer.json" ] && command -v composer >/dev/null 2>&1; then
-        if command -v jq >/dev/null 2>&1; then
-            local require_length=$(jq '.require | length' composer.json 2>/dev/null || echo "0")
-            local has_php_only=$(jq '.require | keys | length == 1 and .[0] == "php"' composer.json 2>/dev/null || echo "false")
 
-            if [[ $require_length -gt 0 ]] && [[ "$has_php_only" != "true" ]]; then
-                if [ "$quiet_mode" != "true" ]; then
-                    echo "📦 Project has Composer production dependencies"
-                    # Use install instead of update to avoid dependency conflicts
-                    if composer install --quiet --no-dev --optimize-autoloader --no-interaction; then
-                        echo "✅ Composer dependencies installed for production"
-                    else
-                        echo "❌ Composer install failed, trying update as fallback"
-                        composer update --quiet --no-dev --optimize-autoloader --no-interaction
-                        echo "✅ Composer dependencies updated for production"
-                    fi
-                else
-                    # Try install first, fallback to update if it fails
-                    if ! composer install --quiet --no-dev --optimize-autoloader --no-interaction >/dev/null 2>&1; then
-                        composer update --quiet --no-dev --optimize-autoloader --no-interaction >/dev/null 2>&1
-                    fi
-                fi
-            else
-                if [ "$quiet_mode" != "true" ]; then
-                    echo "ℹ️  Project has no Composer production dependencies, skipping composer update"
-                fi
-            fi
-        else
-            if [ "$quiet_mode" != "true" ]; then
-                echo "⚠️  jq not available, cannot check Composer dependencies"
-            fi
-        fi
-    elif [ -f "composer.json" ]; then
-        if [ "$quiet_mode" != "true" ]; then
-            echo "⚠️  composer.json found but Composer not available"
-        fi
-    fi
 
     if [ "$quiet_mode" != "true" ]; then
         echo "✅ Production build completed successfully"
