@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.1] - 2025-09-16
+* BUG: Fix get_version_package_json function.
+
 ## [0.8.0] - 2025-09-16
 * ENH: Add more tests.
 * ENH: Abstract some more.

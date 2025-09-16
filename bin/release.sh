@@ -221,7 +221,7 @@ if [ "$RUN_TESTS" = true ]; then
 
     # Test version reading
     if command -v jq >/dev/null 2>&1; then
-        VERSION=$(get_version_package_json)
+        VERSION=$(get_package_json_version)
         echo "   ✅ Current version: $VERSION"
     else
         echo "   ❌ Cannot read version (jq required)"
@@ -301,7 +301,7 @@ if [ "$RUN_TESTS" = true ]; then
     echo "   • Compression: $COMPRESSION_TOOL"
     echo "   • Copy Tool: $COPY_TOOL"
     if command -v jq >/dev/null 2>&1; then
-        echo "   • Current Version: $(get_version_package_json)"
+        echo "   • Current Version: $(get_package_json_version)"
     fi
     echo ""
     echo "✅ System ready for wp-release!"

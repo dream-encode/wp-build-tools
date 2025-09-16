@@ -315,7 +315,7 @@ function wp_zip() {
     ZIP_NAME="$(basename "$CURRENT_DIR")"
 
     if [ "$CHOICE" = "2" ]; then
-        CURRENT_VERSION=$(get_version_package_json)
+        CURRENT_VERSION=$(get_package_json_version)
         ZIP_NAME="$(basename "$CURRENT_DIR")-v$CURRENT_VERSION"
     fi
 
@@ -478,7 +478,7 @@ function wp_create_release() {
     local TEMP_DIR=$(get_temp_dir)
     local BASENAME=$(basename "$CURRENT_DIR")
     local PACKAGE_MANAGER=$(get_package_manager_for_project)
-    local CURRENT_VERSION=$(get_version_package_json)
+    local CURRENT_VERSION=$(get_package_json_version)
 
     # Read custom ZIP exclusions early (before release branch creation)
     # This ensures .wp-build-exclusions is available when we need it
@@ -612,7 +612,7 @@ function wp_create_release() {
     fi
 
     # Get the current version after the release process
-    local RELEASE_VERSION=$(get_version_package_json)
+    local RELEASE_VERSION=$(get_package_json_version)
 
     # Exit now if not a WP plugin or theme with a release asset
     if ! [ "$IS_WP_PLUGIN" = true ] && ! [ "$IS_WP_THEME" = true ]; then
