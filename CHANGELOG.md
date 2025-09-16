@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.8.7] - 2025-09-16
 * BUG: Fix release asset upload validation.
 
 ## [0.8.6] - 2025-09-16
