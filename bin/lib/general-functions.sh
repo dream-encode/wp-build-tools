@@ -995,14 +995,18 @@ function build_for_production() {
                 echo "🧹 Installing dependencies with yarn..."
                 yarn --silent install --frozen-lockfile
             else
-                yarn --silent install --frozen-lockfile >/dev/null 2>&1
+                if ! yarn --silent install --frozen-lockfile >/dev/null 2>&1; then
+                    return 1
+                fi
             fi
 
             if [ "$quiet_mode" != "true" ]; then
                 echo "🔨 Running $build_script build with yarn..."
             fi
             if [ "$quiet_mode" = "true" ]; then
-                yarn --silent run "$build_script" >/dev/null 2>&1
+                if ! yarn --silent run "$build_script" >/dev/null 2>&1; then
+                    return 1
+                fi
             else
                 if yarn --silent run "$build_script" >/dev/null 2>&1; then
                     echo "✅ Yarn $build_script build completed successfully"
@@ -1016,14 +1020,18 @@ function build_for_production() {
                 echo "🧹 Installing dependencies with npm..."
                 npm --silent ci
             else
-                npm --silent ci >/dev/null 2>&1
+                if ! npm --silent ci >/dev/null 2>&1; then
+                    return 1
+                fi
             fi
 
             if [ "$quiet_mode" != "true" ]; then
                 echo "🔨 Running $build_script build with npm..."
             fi
             if [ "$quiet_mode" = "true" ]; then
-                npm run --silent "$build_script" >/dev/null 2>&1
+                if ! npm run --silent "$build_script" >/dev/null 2>&1; then
+                    return 1
+                fi
             else
                 if npm run --silent "$build_script" >/dev/null 2>&1; then
                     echo "✅ NPM $build_script build completed successfully"
