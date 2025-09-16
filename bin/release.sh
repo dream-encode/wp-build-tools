@@ -152,11 +152,6 @@ if [ -f "$SCRIPT_DIR/config/release.conf" ]; then
     source "$SCRIPT_DIR/config/release.conf"
 fi
 
-# Source local project configuration if it exists.
-if [ -f ".wp-release.conf" ]; then
-    source ".wp-release.conf"
-fi
-
 # Source helper functions.
 source "$SCRIPT_DIR/lib/platform-utils.sh"
 source "$SCRIPT_DIR/lib/tool-checker.sh"

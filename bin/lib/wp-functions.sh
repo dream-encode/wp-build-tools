@@ -470,13 +470,9 @@ function wp_create_release() {
 
     # Step 1: Pre-release checks
     step_start "[1/6] 🔍 Running pre-release checks"
-
-    # Check for debugging code if enabled (default: true)
-    if [ "${CHECK_DEBUGGING_CODE:-true}" = "true" ]; then
-        if ! wp_check_debugging_code --quiet; then
-            printf "\n❌ Found debugging code in plugin. Please correct before releasing.\n"
-            return 1
-        fi
+    if ! wp_check_debugging_code --quiet; then
+        printf "\n❌ Found debugging code in plugin. Please correct before releasing.\n"
+        return 1
     fi
 
     # Check build process if build scripts exist
