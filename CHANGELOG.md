@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* TWK: Only check for release.yml.
 
 ## [0.8.1] - 2025-09-16
 * BUG: Fix get_version_package_json function.
