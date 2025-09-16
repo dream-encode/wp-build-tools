@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.5] - 2025-09-16
+* BUG: Wait for the Zip file to be available before uploading to GitHub.
+
 ## [0.8.4] - 2025-09-16
 * BUG: Trying another fix for theme builds with vite.
 
