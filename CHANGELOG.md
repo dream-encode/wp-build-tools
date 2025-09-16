@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.0] - 2025-09-16
+* ENH: Add more tests.
+* ENH: Abstract some more.
+
 ## [0.7.7] - 2025-09-15
 * BUG: Fix MMWOP release asset detection.
 

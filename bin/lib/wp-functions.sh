@@ -126,19 +126,26 @@ function is_wp_block_plugin() {
 }
 
 function wp_plugin_has_release_asset() {
-    PLUGIN_FILENAME="$(wp_plugin_filename)"
-    PLUGIN_NAME="$(wp_get_plugin_name)"
+    local MAIN_FILE=""
+    local PLUGIN_NAME="$(wp_get_plugin_name)"
 
-    if [ "$PLUGIN_NAME" = "max-marine-warehouse-operations-wp-plugin" ];
-    then
-        PLUGIN_FILENAME="max-marine-electronics-warehouse-operations.php"
+    # Determine the main file based on project type
+    if is_wp_theme_dir; then
+        MAIN_FILE="style.css"
+    else
+        # Plugin logic
+        MAIN_FILE="$(wp_plugin_filename)"
+
+        if [ "$PLUGIN_NAME" = "max-marine-warehouse-operations-wp-plugin" ]; then
+            MAIN_FILE="max-marine-electronics-warehouse-operations.php"
+        fi
     fi
 
-    if [ ! -f "$PLUGIN_FILENAME" ]; then
+    if [ ! -f "$MAIN_FILE" ]; then
         return 1
     fi
 
-    if grep -q "Release Asset:.*true" "$PLUGIN_FILENAME"; then
+    if grep -q "Release Asset:.*true" "$MAIN_FILE"; then
         return 0
     fi
 
@@ -390,21 +397,41 @@ function wp_zip() {
 }
 
 # Bump version in WordPress plugin/theme main file
-function wp_plugin_bump_version() {
+function wp_bump_version() {
     local NEW_VERSION="$1"
     local PLUGIN_NAME="$(wp_get_plugin_name)"
-    local FILENAME="$(wp_plugin_filename)"
+    local FILENAME=""
 
-    # Check if main plugin file exists
-    if [ ! -f "$FILENAME" ]; then
-        echo "Warning: Main plugin file $FILENAME not found. Skipping PHP version update."
-        return 0
-    fi
+    # Determine the main file based on project type
+    if is_wp_theme_dir; then
+        FILENAME="style.css"
 
-    # Update version in plugin header
-    if grep -q "Version:" "$FILENAME"; then
-        sed_inplace "s/^\( \* Version:[ \t]*\)[0-9.]\+/\1$NEW_VERSION/" "$FILENAME"
-        echo "Updated version in $FILENAME header."
+        # Check if theme style.css exists
+        if [ ! -f "$FILENAME" ]; then
+            echo "Warning: Theme style.css not found. Skipping theme version update."
+            return 0
+        fi
+
+        # Update version in theme header (style.css format)
+        if grep -q "Version:" "$FILENAME"; then
+            sed_inplace "s/^\(Version:[ \t]*\)[0-9.]\+/\1$NEW_VERSION/" "$FILENAME"
+            echo "Updated version in $FILENAME header."
+        fi
+    else
+        # Plugin logic
+        FILENAME="$(wp_plugin_filename)"
+
+        # Check if main plugin file exists
+        if [ ! -f "$FILENAME" ]; then
+            echo "Warning: Main plugin file $FILENAME not found. Skipping PHP version update."
+            return 0
+        fi
+
+        # Update version in plugin header (PHP format)
+        if grep -q "Version:" "$FILENAME"; then
+            sed_inplace "s/^\( \* Version:[ \t]*\)[0-9.]\+/\1$NEW_VERSION/" "$FILENAME"
+            echo "Updated version in $FILENAME header."
+        fi
     fi
 
     # Update version constant in the main plugin file and any constants files.

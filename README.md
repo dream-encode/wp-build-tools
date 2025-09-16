@@ -48,6 +48,7 @@ npx @dream-encode/wp-build-tools setup --force    # Automatic setup
 ```bash
 wp-release --check-tools    # Verify all tools are installed
 wp-release --test           # Run comprehensive tests
+wp-release --dry-run patch  # Test release process without git operations
 ```
 
 ## Usage
@@ -67,6 +68,7 @@ wp-release hotfix   # 1.0.0 → 1.0.0.1 (critical fixes)
 # Tool management
 wp-release --check-tools    # Check if all required tools are installed
 wp-release --test           # Run comprehensive compatibility and readiness tests
+wp-release --dry-run patch  # Test release process without git operations
 wp-release --help           # Show detailed help
 wp-release --version        # Show version info
 ```
@@ -277,6 +279,30 @@ You can customize the release process by modifying the functions in the `lib/` d
 - **general-functions.sh** - Version bumping, file operations
 - **git-functions.sh** - Git operations, GitHub releases
 - **wp-functions.sh** - WordPress-specific operations, ZIP creation
+
+## Testing
+
+wp-build-tools includes a comprehensive test suite for validating functionality before releases:
+
+```bash
+# Run full test suite (tests wp-release on Max Marine plugins/themes)
+npm test
+
+# Run quick test subset
+npm run test:quick
+
+# Clean up test sandbox
+npm run test:cleanup
+```
+
+The test suite:
+- Creates a sandbox environment (`wp-build-tools-tests`)
+- Copies Max Marine plugins/themes for testing
+- Runs wp-release in dry-run mode (no git operations)
+- Validates version bumps, ZIP contents, changelog updates, etc.
+- Makes **zero changes** to original files
+
+See `tests/README.md` for detailed documentation.
 
 ## Support
 

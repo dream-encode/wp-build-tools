@@ -68,7 +68,7 @@ function package_json_exists() {
 }
 
 # Get version from package.json.
-function get_version_package_json() {
+function get_package_json_version() {
     if ! command -v jq >/dev/null 2>&1; then
         echo "Error: jq is required but not installed." >&2
         exit 1
@@ -78,7 +78,7 @@ function get_version_package_json() {
 }
 
 # Update version in package.json.
-function bump_version_package_json() {
+function bump_package_json_version() {
     local VERSION="$1"
 
     if ! command -v jq >/dev/null 2>&1; then
@@ -103,19 +103,182 @@ function replace_dashes_with_underscores() {
     echo $1 | tr "-" "_"
 }
 
+# Get copy folder exclusions list
+function get_copy_folder_exclusions() {
+    # Default exclusions list
+    local default_exclusions=(
+        "node_modules"
+        ".git"
+        ".github"
+        ".gitignore"
+        "vendor"
+        "tests"
+        ".github"
+        "*.log"
+        ".DS_Store"
+        "Thumbs.db"
+        "*.tmp"
+        ".vscode"
+        "*.bak"
+        ".wakatime-project"
+        "bin"
+    )
+
+    # Use custom exclusions if provided, otherwise use defaults
+    local exclusions=("${COPY_EXCLUSIONS[@]:-${default_exclusions[@]}}")
+
+    # Output the exclusions array
+    printf '%s\n' "${exclusions[@]}"
+}
+
+# Get files containing [NEXT_VERSION] placeholders for replacement
+function get_next_version_replacement_files() {
+    grep -r -l "\[NEXT_VERSION\]" . \
+        --exclude-dir=node_modules \
+        --exclude-dir=vendor \
+        --exclude-dir=.git \
+        --exclude-dir=tests \
+        --exclude="*.zip" \
+        --exclude="*.tar.gz" \
+        --exclude="*.jpg" \
+        --exclude="*.jpeg" \
+        --exclude="*.png" \
+        --exclude="*.gif" \
+        --exclude="*.ico" \
+        --exclude="*.pdf" \
+        --exclude="*.woff" \
+        --exclude="*.woff2" \
+        --exclude="*.ttf" \
+        --exclude="*.eot" \
+        --exclude="*.svg" \
+        --exclude="*.mp4" \
+        --exclude="*.mp3" \
+        --exclude="*.wav" \
+        --exclude="*.lock" \
+        --exclude="*.sh" \
+        --exclude="CHANGELOG.md" \
+        2>/dev/null || true
+}
+
+# Get ZIP exclusions list for build processes.
+function get_zip_folder_exclusions() {
+    # Default exclusions list
+    local default_exclusions=(
+        "*.git*"
+        "*.dist"
+        ".env*"
+        "composer.*"
+        "package.json"
+        "package-lock.json"
+        "*.lock"
+        "webpack.config.js"
+        "*.map"
+        ".babelrc"
+        "postcss.config.js"
+        ".cache"
+        "./tests"
+        ".husky"
+        "playwright*"
+        ".wakatime*"
+        ".eslint*"
+        "eslint*"
+        ".dist*"
+        ".nvmrc"
+        ".vscode"
+        ".editorconfig"
+        "./codecov"
+        "assets/src"
+        "*/assets/src"
+        "*/*/assets/src"
+        "*/*/*/assets/src"
+        "assets/*/src"
+        "*/assets/*/src"
+        "test-results"
+        "./bin"
+        ".distignore"
+        "vite.config.js"
+    )
+
+    # Check if we should exclude node_modules directory based on dependencies.
+    if [ -f "package.json" ] && command -v jq >/dev/null 2>&1; then
+        local dependencies_length=$(jq '.dependencies | length' package.json 2>/dev/null || echo "0")
+
+        if [[ $dependencies_length -eq 0 ]]; then
+            default_exclusions+=("./node_modules")
+        fi
+    else
+        # No package.json or jq not available, exclude node_modules directory by default.
+        default_exclusions+=("./node_modules")
+    fi
+
+    # Check if we should exclude vendor directory based on dependencies.
+    # Only exclude vendor if the project has no production dependencies (or only PHP requirement).
+    if [ -f "composer.json" ] && command -v jq >/dev/null 2>&1; then
+        local require_length=$(jq '.require | length' composer.json 2>/dev/null || echo "0")
+        local has_php_only=$(jq '.require | keys | length == 1 and .[0] == "php"' composer.json 2>/dev/null || echo "false")
+
+        if [[ $require_length -eq 0 ]] || [[ "$has_php_only" == "true" ]]; then
+            # No production dependencies or only PHP requirement, exclude vendor directory.
+            default_exclusions+=("./vendor")
+        fi
+    else
+        # No composer.json or jq not available, exclude vendor directory by default.
+        default_exclusions+=("./vendor")
+    fi
+
+    # Check if is_wp_block_plugin function exists and call it if available
+    if command -v is_wp_block_plugin >/dev/null 2>&1 && is_wp_block_plugin; then
+        default_exclusions+=("src" "./src" "*/src")
+    fi
+
+    # Load custom exclusions - prioritize early-read exclusions from wp_create_release
+    local custom_exclusions=()
+    if [ -n "$WP_BUILD_EXCLUSIONS_FILE" ] && [ -f "$WP_BUILD_EXCLUSIONS_FILE" ]; then
+        # Use exclusions read early in wp_create_release (includes .wp-build-exclusions file itself)
+        while IFS= read -r line; do
+            if [ -n "$line" ]; then
+                custom_exclusions+=("$line")
+            fi
+        done < "$WP_BUILD_EXCLUSIONS_FILE"
+    elif [ -f ".wp-build-exclusions" ]; then
+        # Fallback: read .wp-build-exclusions file if it exists (for direct zip_folder calls)
+        while IFS= read -r line; do
+            # Skip empty lines and comments (lines starting with #)
+            if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
+                custom_exclusions+=("$line")
+            fi
+        done < ".wp-build-exclusions"
+        # Add .wp-build-exclusions itself to exclusions
+        custom_exclusions+=(".wp-build-exclusions")
+    fi
+
+    # Combine default exclusions with custom exclusions
+    local all_exclusions=("${default_exclusions[@]}" "${custom_exclusions[@]}")
+
+    # Use ZIP_EXCLUSIONS environment variable if set, otherwise use combined exclusions
+    local exclusions=("${ZIP_EXCLUSIONS[@]:-${all_exclusions[@]}}")
+
+    # Output the exclusions array
+    printf '%s\n' "${exclusions[@]}"
+}
+
 function deploy_workflow_exists() {
     return file_exists ".github/workflows/deploy*"
+}
+
+function release_workflow_exists() {
+    return file_exists ".github/workflows/release*"
 }
 
 function current_project_has_production_composer_dependencies() {
     LENGTH=$(jq '.require | length' composer.json)
 
     if [[ $LENGTH -gt 0 ]]; then
-        echo "Plugin has dependencies.";
+        echo "Composer production dependencies found.";
         return
     fi
 
-    echo "Plugin does not have dependencies.";
+    echo "Composer production dependencies not found.";
     false
 }
 
@@ -123,7 +286,7 @@ function current_dir_has_npm_production_script() {
     LENGTH=$(jq '.scripts.production | length' package.json)
 
     if [[ $LENGTH -gt 0 ]]; then
-        echo "Package has a production build.";
+        echo "Package production build script found.";
         return
     fi
 
@@ -185,7 +348,7 @@ function changelog_check_next_version() {
 }
 
 function changelog_add_next_version_template() {
-    local CURRENT_VERSION=$(get_version_package_json)
+    local CURRENT_VERSION=$(get_package_json_version)
     local QUIET_MODE="false"
 
     # Parse arguments
@@ -219,7 +382,7 @@ function changelog_add_next_version_template() {
 }
 
 function changelog_update_current_version() {
-    local CURRENT_VERSION=$(get_version_package_json)
+    local CURRENT_VERSION=$(get_package_json_version)
 
     # Update changelog in development branch before release
     if changelog_exists; then
@@ -291,20 +454,11 @@ function interactive_menu_select() {
 
 # Interactive version bump with type selection.
 function package_version_bump_interactive() {
-    local CURRENT_DIR=$(pwd)
-    local CURRENT_DIR_BASENAME=$(basename "$CURRENT_DIR")
-    local CURRENT_VERSION=$(get_version_package_json)
+    local CURRENT_DIR_BASENAME=$(wp_get_dir_basename)
+    local CURRENT_VERSION=$(get_package_json_version)
 
-    local IS_WP_PLUGIN=false
-    local IS_WP_THEME=false
-
-    if [[ $PWD/ = */wp-content/plugins/* ]]; then
-        IS_WP_PLUGIN=true
-    fi
-
-    if [[ $PWD/ = */wp-content/themes/* ]]; then
-        IS_WP_THEME=true
-    fi
+    local IS_WP_PLUGIN=$(is_wp_plugin_dir && echo "true" || echo "false")
+    local IS_WP_THEME=$(is_wp_theme_dir && echo "true" || echo "false")
 
     # Create menu options with version previews
     local options=(
@@ -371,7 +525,7 @@ function package_version_bump_interactive() {
     fi
 
     # Update package.json
-    bump_version_package_json "$NEW_VERSION"
+    bump_package_json_version "$NEW_VERSION"
     echo "Updated version in package.json."
 
     # Update composer.json if it exists.
@@ -392,10 +546,10 @@ function package_version_bump_interactive() {
 
     # Update WordPress plugin/theme main file.
     if [ "$IS_WP_PLUGIN" = true ] || [ "$IS_WP_THEME" = true ]; then
-        if command -v wp_plugin_bump_version >/dev/null 2>&1; then
-            wp_plugin_bump_version "$NEW_VERSION"
+        if command -v wp_bump_version >/dev/null 2>&1; then
+            wp_bump_version "$NEW_VERSION"
         else
-            echo "Warning: wp_plugin_bump_version function not available. Skipping WordPress file updates."
+            echo "Warning: wp_bump_version function not available. Skipping WordPress file updates."
         fi
     fi
 
@@ -405,30 +559,7 @@ function package_version_bump_interactive() {
 
     # Find all files containing [NEXT_VERSION] (excluding binary files, node_modules, vendor, .git).
     if command -v grep >/dev/null 2>&1; then
-        NEXT_VERSION_FILES=$(grep -r -l "\[NEXT_VERSION\]" . \
-            --exclude-dir=node_modules \
-            --exclude-dir=vendor \
-            --exclude-dir=.git \
-            --exclude-dir=tests \
-            --exclude="*.zip" \
-            --exclude="*.tar.gz" \
-            --exclude="*.jpg" \
-            --exclude="*.jpeg" \
-            --exclude="*.png" \
-            --exclude="*.gif" \
-            --exclude="*.ico" \
-            --exclude="*.pdf" \
-            --exclude="*.woff" \
-            --exclude="*.woff2" \
-            --exclude="*.ttf" \
-            --exclude="*.eot" \
-            --exclude="*.svg" \
-            --exclude="*.mp4" \
-            --exclude="*.mp3" \
-            --exclude="*.wav" \
-            --exclude="*.lock" \
-            --exclude="*.sh" \
-            2>/dev/null || true)
+        NEXT_VERSION_FILES=$(get_next_version_replacement_files)
 
         if [ -n "$NEXT_VERSION_FILES" ]; then
             echo "Found [NEXT_VERSION] placeholders in the following files:"
@@ -467,22 +598,14 @@ function package_version_bump_interactive() {
 
 function package_version_bump_auto() {
     local bump_type="$1"
-    local current_version=$(get_version_package_json)
+    local current_version=$(get_package_json_version)
 
     local new_version=$(calculate_new_version "$current_version" "$bump_type")
 
     echo "Auto-bumping version from $current_version to $new_version ($bump_type)"
 
-    local IS_WP_PLUGIN=false
-    local IS_WP_THEME=false
-
-    if [[ $PWD/ = */wp-content/plugins/* ]]; then
-        IS_WP_PLUGIN=true
-    fi
-
-    if [[ $PWD/ = */wp-content/themes/* ]]; then
-        IS_WP_THEME=true
-    fi
+    local IS_WP_PLUGIN=$(is_wp_plugin_dir && echo "true" || echo "false")
+    local IS_WP_THEME=$(is_wp_theme_dir && echo "true" || echo "false")
 
     # Check if a changelog exists and update it
     if changelog_exists; then
@@ -504,7 +627,7 @@ function package_version_bump_auto() {
     fi
 
     # Update package.json
-    bump_version_package_json "$new_version"
+    bump_package_json_version "$new_version"
     echo "Updated version in package.json."
 
     # Update composer.json if it exists
@@ -521,40 +644,16 @@ function package_version_bump_auto() {
 
     # Update WordPress plugin/theme main file
     if [ "$IS_WP_PLUGIN" = true ] || [ "$IS_WP_THEME" = true ]; then
-        if command -v wp_plugin_bump_version >/dev/null 2>&1; then
-            wp_plugin_bump_version "$new_version"
+        if command -v wp_bump_version >/dev/null 2>&1; then
+            wp_bump_version "$new_version"
         else
-            echo "Warning: wp_plugin_bump_version function not available. Skipping WordPress file updates."
+            echo "Warning: wp_bump_version function not available. Skipping WordPress file updates."
         fi
     fi
 
     # Replace [NEXT_VERSION] placeholders in all files
     if command -v grep >/dev/null 2>&1; then
-        NEXT_VERSION_FILES=$(grep -r -l "\[NEXT_VERSION\]" . \
-            --exclude-dir=node_modules \
-            --exclude-dir=vendor \
-            --exclude-dir=.git \
-            --exclude-dir=tests \
-            --exclude="*.zip" \
-            --exclude="*.tar.gz" \
-            --exclude="*.jpg" \
-            --exclude="*.jpeg" \
-            --exclude="*.png" \
-            --exclude="*.gif" \
-            --exclude="*.ico" \
-            --exclude="*.pdf" \
-            --exclude="*.woff" \
-            --exclude="*.woff2" \
-            --exclude="*.ttf" \
-            --exclude="*.eot" \
-            --exclude="*.svg" \
-            --exclude="*.mp4" \
-            --exclude="*.mp3" \
-            --exclude="*.wav" \
-            --exclude="*.lock" \
-            --exclude="*.sh" \
-            --exclude="CHANGELOG.md" \
-            2>/dev/null || true)
+        NEXT_VERSION_FILES=$(get_next_version_replacement_files)
 
         if [ -n "$NEXT_VERSION_FILES" ]; then
             echo "$NEXT_VERSION_FILES" | while IFS= read -r file; do
@@ -612,27 +711,8 @@ function copy_folder() {
         return 1
     fi
 
-    # Default exclusions list
-    local default_exclusions=(
-        "node_modules"
-        ".git"
-        ".github"
-        ".gitignore"
-        "vendor"
-        "tests"
-        ".github"
-        "*.log"
-        ".DS_Store"
-        "Thumbs.db"
-        "*.tmp"
-        ".vscode"
-        "*.bak"
-        ".wakatime-project"
-        "bin"
-    )
-
-    # Use custom exclusions if provided, otherwise use defaults
-    local exclusions=("${COPY_EXCLUSIONS[@]:-${default_exclusions[@]}}")
+    # Get exclusions using the centralized function
+    local exclusions=($(get_copy_folder_exclusions))
 
     if [ "$quiet_mode" != "true" ]; then
         echo "Copying files from $source_dir to $dest_dir"
@@ -777,101 +857,8 @@ function zip_folder() {
         return 1
     fi
 
-    # Default exclusions list
-    local default_exclusions=(
-        "*.git*"
-        "*.dist"
-        ".env*"
-        "composer.*"
-        "package.json"
-        "package-lock.json"
-        "*.lock"
-        "webpack.config.js"
-        "*.map"
-        ".babelrc"
-        "postcss.config.js"
-        ".cache"
-        "./tests"
-        ".husky"
-        "playwright*"
-        ".wakatime*"
-        ".eslint*"
-        "eslint*"
-        ".dist*"
-        ".nvmrc"
-        ".vscode"
-        ".editorconfig"
-        "./codecov"
-        "assets/src"
-        "*/assets/src"
-        "*/*/assets/src"
-        "*/*/*/assets/src"
-        "assets/*/src"
-        "*/assets/*/src"
-        "test-results"
-        "./bin"
-        ".distignore"
-        "vite.config.js"
-    )
-
-    # Check if we should exclude node_modules directory based on dependencies.
-    if [ -f "package.json" ] && command -v jq >/dev/null 2>&1; then
-        local dependencies_length=$(jq '.dependencies | length' package.json 2>/dev/null || echo "0")
-
-        if [[ $dependencies_length -eq 0 ]]; then
-            default_exclusions+=("./node_modules")
-        fi
-    else
-        # No package.json or jq not available, exclude node_modules directory by default.
-        default_exclusions+=("./node_modules")
-    fi
-
-    # Check if we should exclude vendor directory based on dependencies.
-    # Only exclude vendor if the project has no production dependencies (or only PHP requirement).
-    if [ -f "composer.json" ] && command -v jq >/dev/null 2>&1; then
-        local require_length=$(jq '.require | length' composer.json 2>/dev/null || echo "0")
-        local has_php_only=$(jq '.require | keys | length == 1 and .[0] == "php"' composer.json 2>/dev/null || echo "false")
-
-        if [[ $require_length -eq 0 ]] || [[ "$has_php_only" == "true" ]]; then
-            # No production dependencies or only PHP requirement, exclude vendor directory.
-            default_exclusions+=("./vendor")
-        fi
-    else
-        # No composer.json or jq not available, exclude vendor directory by default.
-        default_exclusions+=("./vendor")
-    fi
-
-    # Check if is_wp_block_plugin function exists and call it if available
-    if command -v is_wp_block_plugin >/dev/null 2>&1 && is_wp_block_plugin; then
-        default_exclusions+=("src" "./src" "*/src")
-    fi
-
-    # Load custom exclusions - prioritize early-read exclusions from wp_create_release
-    local custom_exclusions=()
-    if [ -n "$WP_BUILD_EXCLUSIONS_FILE" ] && [ -f "$WP_BUILD_EXCLUSIONS_FILE" ]; then
-        # Use exclusions read early in wp_create_release (includes .wp-build-exclusions file itself)
-        while IFS= read -r line; do
-            if [ -n "$line" ]; then
-                custom_exclusions+=("$line")
-            fi
-        done < "$WP_BUILD_EXCLUSIONS_FILE"
-    elif [ -f ".wp-build-exclusions" ]; then
-        # Fallback: read .wp-build-exclusions file if it exists (for direct zip_folder calls)
-        while IFS= read -r line; do
-            # Skip empty lines and comments (lines starting with #)
-            if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
-                custom_exclusions+=("$line")
-            fi
-        done < ".wp-build-exclusions"
-        # Add .wp-build-exclusions itself to exclusions
-        custom_exclusions+=(".wp-build-exclusions")
-    fi
-
-    # Combine default exclusions with custom exclusions
-    local all_exclusions=("${default_exclusions[@]}" "${custom_exclusions[@]}")
-
-    # Use ZIP_EXCLUSIONS environment variable if set, otherwise use combined exclusions
-    local exclusions=("${ZIP_EXCLUSIONS[@]:-${all_exclusions[@]}}")
+    # Get exclusions using the centralized function
+    local exclusions=($(get_zip_folder_exclusions))
 
     if [ "$quiet_mode" != "true" ]; then
         echo "Creating ZIP file: $zip_filename"
