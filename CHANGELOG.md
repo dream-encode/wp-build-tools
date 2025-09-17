@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Correct src dir exclusion.
 
 ## [0.8.14] - 2025-09-17
 * BUG: Exclude block src directories from release assets.
