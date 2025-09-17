@@ -737,6 +737,7 @@ function wp_create_release() {
         printf "⚠️  Asset already exists on GitHub release - skipping upload!\n"
         printf "   The release asset is already available on GitHub.\n"
         step_done
+        wp_post_create_release
         return 0
     fi
 
@@ -754,10 +755,12 @@ function wp_create_release() {
         printf "⚠️  Asset already exists on GitHub release - this is OK!\n"
         printf "   The release asset is available on GitHub.\n"
         step_done
+        wp_post_create_release
         return 0
     elif [ $upload_exit_code -eq 0 ]; then
         printf "✅ Upload successful!\n"
         step_done
+        wp_post_create_release
         return 0
     else
         # Check if asset exists on GitHub anyway (sometimes upload works but returns error)
@@ -766,6 +769,7 @@ function wp_create_release() {
         if gh release view "v$RELEASE_VERSION" --json assets --jq ".assets[].name" 2>/dev/null | grep -q "$asset_name"; then
             printf "✅ Asset found on GitHub - upload was actually successful!\n"
             step_done
+            wp_post_create_release
             return 0
         else
             printf "❌ Upload failed and asset not found on GitHub\n"
