@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Simplify release asset upload validation.
 
 ## [0.8.7] - 2025-09-16
 * BUG: Fix release asset upload validation.
