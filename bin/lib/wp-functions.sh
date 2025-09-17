@@ -727,57 +727,9 @@ function wp_create_release() {
         return 1
     fi
 
-    # Attempt to upload with error handling
-    printf "\n🔍 Debug: Attempting upload with command: gh release upload \"v$RELEASE_VERSION\" \"$ZIP_FILE_PATH\"\n"
-
-    # Check if asset already exists first to avoid the upload entirely
-    local asset_name=$(basename "$ZIP_FILE_PATH")
-    printf "🔍 Debug: Checking if asset already exists before upload...\n"
-    if gh release view "v$RELEASE_VERSION" --json assets --jq ".assets[].name" 2>/dev/null | grep -q "$asset_name"; then
-        printf "⚠️  Asset already exists on GitHub release - skipping upload!\n"
-        printf "   The release asset is already available on GitHub.\n"
-        step_done
-        wp_post_create_release
-        return 0
-    fi
-
-    # Run the upload command and capture output
-    printf "🔍 Debug: Asset not found, proceeding with upload...\n"
-    printf "🔍 Debug: Executing upload command NOW...\n"
-    local upload_output
-    upload_output=$(gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" 2>&1)
-    local upload_exit_code=$?
-    printf "🔍 Debug: Upload command finished with exit code: $upload_exit_code\n"
-    printf "🔍 Debug: Upload output: '$upload_output'\n"
-
-    # Check if the error is because asset already exists
-    if echo "$upload_output" | grep -q "already exists"; then
-        printf "⚠️  Asset already exists on GitHub release - this is OK!\n"
-        printf "   The release asset is available on GitHub.\n"
-        step_done
-        wp_post_create_release
-        return 0
-    elif [ $upload_exit_code -eq 0 ]; then
-        printf "✅ Upload successful!\n"
-        step_done
-        wp_post_create_release
-        return 0
-    else
-        # Check if asset exists on GitHub anyway (sometimes upload works but returns error)
-        local asset_name=$(basename "$ZIP_FILE_PATH")
-        printf "🔍 Debug: Checking if asset exists on GitHub despite error...\n"
-        if gh release view "v$RELEASE_VERSION" --json assets --jq ".assets[].name" 2>/dev/null | grep -q "$asset_name"; then
-            printf "✅ Asset found on GitHub - upload was actually successful!\n"
-            step_done
-            wp_post_create_release
-            return 0
-        else
-            printf "❌ Upload failed and asset not found on GitHub\n"
-            printf "   Exit code: $upload_exit_code\n"
-            printf "   Error output: '$upload_output'\n"
-            return 1
-        fi
-    fi
+    # Upload the asset to GitHub
+    gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH"
+    step_done
 
     wp_post_create_release
 
