@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: I hate life.
 
 ## [0.8.10] - 2025-09-16
 * BUG: Maybe fix again.
