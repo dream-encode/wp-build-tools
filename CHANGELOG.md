@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Exclude block src directories from release assets.
 
 ## [0.8.13] - 2025-09-17
 * BUG: Remove all debugging. I'm potato.
