@@ -483,9 +483,6 @@ function wp_create_release() {
     local version_type="$1"
     echo "🚀 Starting WordPress release process..."
 
-    # Add trap to catch unexpected exits
-    trap 'printf "🔍 Debug: wp_create_release function exiting unexpectedly at line $LINENO\n"; exit 1' EXIT
-
     # Set some vars for WP detection
     local CURRENT_DIR=$(pwd)
     local TEMP_DIR=$(get_temp_dir)
@@ -512,7 +509,6 @@ function wp_create_release() {
     step_start "[1/6] 🔍 Running pre-release checks"
     if ! wp_check_debugging_code --quiet; then
         printf "\n❌ Found debugging code in plugin. Please correct before releasing.\n"
-        trap - EXIT
         return 1
     fi
 
@@ -549,7 +545,6 @@ function wp_create_release() {
                 printf "📋 Build error preview:\n"
                 echo "$build_output" | tail -5 | sed 's/^/   /'
                 printf "\n"
-                trap - EXIT
                 return 1
             fi
 
@@ -623,7 +618,6 @@ function wp_create_release() {
     # If core release failed, exit
     if [ $git_exit_code -ne 0 ]; then
         printf "\n❌ Core release process failed.\n"
-        trap - EXIT
         return 1
     fi
 
@@ -766,7 +760,6 @@ function wp_create_release() {
             printf "❌ Upload failed and asset not found on GitHub\n"
             printf "   Exit code: $upload_exit_code\n"
             printf "   Error output: '$upload_output'\n"
-            trap - EXIT
             return 1
         fi
     fi
@@ -788,9 +781,6 @@ function wp_create_release() {
     # if [ $? == 0 ]; then
     #     wp_update_plugin_via_git_remote_updater
     # fi
-
-    # Remove trap before successful exit
-    trap - EXIT
 }
 
 function wp_post_create_release() {
