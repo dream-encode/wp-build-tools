@@ -483,6 +483,9 @@ function wp_create_release() {
     local version_type="$1"
     echo "🚀 Starting WordPress release process..."
 
+    # Add trap to catch unexpected exits
+    trap 'printf "🔍 Debug: wp_create_release function exiting unexpectedly at line $LINENO\n"; exit 1' EXIT
+
     # Set some vars for WP detection
     local CURRENT_DIR=$(pwd)
     local TEMP_DIR=$(get_temp_dir)
@@ -509,6 +512,7 @@ function wp_create_release() {
     step_start "[1/6] 🔍 Running pre-release checks"
     if ! wp_check_debugging_code --quiet; then
         printf "\n❌ Found debugging code in plugin. Please correct before releasing.\n"
+        trap - EXIT
         return 1
     fi
 
@@ -545,6 +549,7 @@ function wp_create_release() {
                 printf "📋 Build error preview:\n"
                 echo "$build_output" | tail -5 | sed 's/^/   /'
                 printf "\n"
+                trap - EXIT
                 return 1
             fi
 
@@ -618,6 +623,7 @@ function wp_create_release() {
     # If core release failed, exit
     if [ $git_exit_code -ne 0 ]; then
         printf "\n❌ Core release process failed.\n"
+        trap - EXIT
         return 1
     fi
 
@@ -730,55 +736,24 @@ function wp_create_release() {
     # Attempt to upload with error handling
     printf "\n🔍 Debug: Attempting upload with command: gh release upload \"v$RELEASE_VERSION\" \"$ZIP_FILE_PATH\"\n"
 
-    local upload_output
-    local upload_exit_code
+    # Just run the damn command and see what happens
+    printf "🔍 Debug: Executing upload command NOW...\n"
+    gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH"
+    local upload_exit_code=$?
+    printf "🔍 Debug: Upload command finished with exit code: $upload_exit_code\n"
 
-    # Use timeout to prevent hanging (5 minutes should be plenty for upload)
-    if command -v timeout >/dev/null 2>&1; then
-        upload_output=$(timeout 300 gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" 2>&1)
-        upload_exit_code=$?
-        if [ $upload_exit_code -eq 124 ]; then
-            printf "🔍 Debug: Upload timed out after 5 minutes\n"
-            upload_output="Upload timed out after 5 minutes"
-        fi
-    else
-        upload_output=$(gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" 2>&1)
-        upload_exit_code=$?
-    fi
-
-    printf "🔍 Debug: Upload exit code: $upload_exit_code\n"
-    printf "🔍 Debug: Upload output: '$upload_output'\n"
-
-    # Verify if the asset actually exists on GitHub regardless of command exit code
+    # Check if asset exists on GitHub regardless of exit code
     local asset_name=$(basename "$ZIP_FILE_PATH")
-    printf "🔍 Debug: Checking if asset '$asset_name' exists on release v$RELEASE_VERSION...\n"
-
-    local asset_check_output
-    asset_check_output=$(gh release view "v$RELEASE_VERSION" --json assets --jq ".assets[].name" 2>/dev/null | grep -F "$asset_name" || echo "")
-
-    if [ -n "$asset_check_output" ]; then
-        printf "✅ Asset verified on GitHub release!\n"
+    printf "🔍 Debug: Checking if asset exists on GitHub...\n"
+    if gh release view "v$RELEASE_VERSION" --json assets --jq ".assets[].name" 2>/dev/null | grep -q "$asset_name"; then
+        printf "✅ Asset found on GitHub - upload successful!\n"
         step_done
-    elif [ $upload_exit_code -eq 0 ]; then
-        printf "✅ Upload command succeeded!\n"
-        step_done
+        return 0
     else
-        # Check if the error is because the asset already exists
-        if echo "$upload_output" | grep -q "already exists\|same name already exists"; then
-            printf "\n⚠️  Asset already exists on GitHub release\n"
-            printf "   This may happen if the release was run multiple times.\n"
-            printf "   The release asset is available on GitHub.\n"
-            step_done
-        else
-            printf "\n❌ Error: Failed to upload release asset to GitHub\n"
-            printf "   Release: v$RELEASE_VERSION\n"
-            printf "   ZIP file: $ZIP_FILE_PATH\n"
-            printf "   Exit code: $upload_exit_code\n"
-            printf "   Error output: '$upload_output'\n"
-            printf "   Asset verification: Asset not found on GitHub\n"
-            printf "   Check GitHub CLI authentication and release existence.\n"
-            return 1
-        fi
+        printf "❌ Asset not found on GitHub - upload may have failed\n"
+        printf "   Exit code was: $upload_exit_code\n"
+        trap - EXIT
+        return 1
     fi
 
     wp_post_create_release
@@ -798,6 +773,9 @@ function wp_create_release() {
     # if [ $? == 0 ]; then
     #     wp_update_plugin_via_git_remote_updater
     # fi
+
+    # Remove trap before successful exit
+    trap - EXIT
 }
 
 function wp_post_create_release() {
