@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.8.10] - 2025-09-16
 * BUG: Maybe fix again.
 
 ## [0.8.9] - 2025-09-16
