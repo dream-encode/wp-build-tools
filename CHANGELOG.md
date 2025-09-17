@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.8.12] - 2025-09-17
 * BUG: Fix wp_post_create_release not being called in all success scenarios.
 
 ## [0.8.11] - 2025-09-16
