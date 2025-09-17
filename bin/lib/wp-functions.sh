@@ -730,7 +730,18 @@ function wp_create_release() {
     # Attempt to upload with error handling
     printf "\n🔍 Debug: Attempting upload with command: gh release upload \"v$RELEASE_VERSION\" \"$ZIP_FILE_PATH\"\n"
 
+    # Check if asset already exists first to avoid the upload entirely
+    local asset_name=$(basename "$ZIP_FILE_PATH")
+    printf "🔍 Debug: Checking if asset already exists before upload...\n"
+    if gh release view "v$RELEASE_VERSION" --json assets --jq ".assets[].name" 2>/dev/null | grep -q "$asset_name"; then
+        printf "⚠️  Asset already exists on GitHub release - skipping upload!\n"
+        printf "   The release asset is already available on GitHub.\n"
+        step_done
+        return 0
+    fi
+
     # Run the upload command and capture output
+    printf "🔍 Debug: Asset not found, proceeding with upload...\n"
     printf "🔍 Debug: Executing upload command NOW...\n"
     local upload_output
     upload_output=$(gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" 2>&1)
