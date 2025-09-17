@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Maybe fix again.
 
 ## [0.8.9] - 2025-09-16
 * BUG: Try to fix release asset upload.
