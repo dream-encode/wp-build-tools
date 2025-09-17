@@ -17,7 +17,7 @@ if (isYarn && isWindows) {
 	console.log('')
 }
 
-const child = spawn( 'bash', [ releaseScript ], {
+const child = spawn( 'bash', [ releaseScript, ...process.argv.slice(2) ], {
 	stdio: 'inherit',
 	cwd: process.cwd(),
 	env: {
