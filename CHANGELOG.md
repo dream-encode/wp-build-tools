@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Fix wp_post_create_release not being called in all success scenarios.
 
 ## [0.8.11] - 2025-09-16
 * BUG: I hate life.
