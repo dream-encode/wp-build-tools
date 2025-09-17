@@ -197,6 +197,8 @@ function get_zip_folder_exclusions() {
         "./bin"
         ".distignore"
         "vite.config.js"
+        "blocks/*/src"
+        "*/blocks/*/src"
     )
 
     # Check if we should exclude node_modules directory based on dependencies.
@@ -226,9 +228,9 @@ function get_zip_folder_exclusions() {
         default_exclusions+=("./vendor")
     fi
 
-    # Check if is_wp_block_plugin function exists and call it if available
-    if command -v is_wp_block_plugin >/dev/null 2>&1 && is_wp_block_plugin; then
-        default_exclusions+=("src" "./src" "*/src")
+    # Check if this project contains blocks (plugin or theme) and exclude src directories
+    if command -v has_wp_blocks >/dev/null 2>&1 && has_wp_blocks; then
+        default_exclusions+=("src" "./src" "*/src" "blocks/*/src" "*/blocks/*/src")
     fi
 
     # Load custom exclusions - prioritize early-read exclusions from wp_create_release

@@ -125,6 +125,15 @@ function is_wp_block_plugin() {
     return 1
 }
 
+# Check if this project contains blocks (plugin or theme)
+function has_wp_blocks() {
+    if find . -name "block.json" -not -path "./node_modules/*" -not -path "./vendor/*" | grep -q .; then
+        return 0
+    fi
+
+    return 1
+}
+
 function wp_plugin_has_release_asset() {
     local MAIN_FILE=""
     local PLUGIN_NAME="$(wp_get_plugin_name)"
