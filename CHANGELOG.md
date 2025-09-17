@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.8.13] - 2025-09-17
 * BUG: Remove all debugging. I'm potato.
 
 ## [0.8.12] - 2025-09-17
