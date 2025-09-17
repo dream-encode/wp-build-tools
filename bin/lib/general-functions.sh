@@ -230,7 +230,7 @@ function get_zip_folder_exclusions() {
 
     # Check if this project contains blocks (plugin or theme) and exclude src directories
     if command -v has_wp_blocks >/dev/null 2>&1 && has_wp_blocks; then
-        default_exclusions+=("src" "./src" "*/src" "blocks/*/src" "*/blocks/*/src")
+        default_exclusions+=("blocks/*/src" "*/blocks/*/src")
     fi
 
     # Load custom exclusions - prioritize early-read exclusions from wp_create_release
