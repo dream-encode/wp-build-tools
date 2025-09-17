@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.9] - 2025-09-16
+* BUG: Try to fix release asset upload.
+
 ## [0.8.8] - 2025-09-16
 * BUG: Simplify release asset upload validation.
 

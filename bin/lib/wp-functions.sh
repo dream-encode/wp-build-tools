@@ -736,24 +736,39 @@ function wp_create_release() {
     # Attempt to upload with error handling
     printf "\n🔍 Debug: Attempting upload with command: gh release upload \"v$RELEASE_VERSION\" \"$ZIP_FILE_PATH\"\n"
 
-    # Just run the damn command and see what happens
+    # Run the upload command and capture output
     printf "🔍 Debug: Executing upload command NOW...\n"
-    gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH"
+    local upload_output
+    upload_output=$(gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" 2>&1)
     local upload_exit_code=$?
     printf "🔍 Debug: Upload command finished with exit code: $upload_exit_code\n"
+    printf "🔍 Debug: Upload output: '$upload_output'\n"
 
-    # Check if asset exists on GitHub regardless of exit code
-    local asset_name=$(basename "$ZIP_FILE_PATH")
-    printf "🔍 Debug: Checking if asset exists on GitHub...\n"
-    if gh release view "v$RELEASE_VERSION" --json assets --jq ".assets[].name" 2>/dev/null | grep -q "$asset_name"; then
-        printf "✅ Asset found on GitHub - upload successful!\n"
+    # Check if the error is because asset already exists
+    if echo "$upload_output" | grep -q "already exists"; then
+        printf "⚠️  Asset already exists on GitHub release - this is OK!\n"
+        printf "   The release asset is available on GitHub.\n"
+        step_done
+        return 0
+    elif [ $upload_exit_code -eq 0 ]; then
+        printf "✅ Upload successful!\n"
         step_done
         return 0
     else
-        printf "❌ Asset not found on GitHub - upload may have failed\n"
-        printf "   Exit code was: $upload_exit_code\n"
-        trap - EXIT
-        return 1
+        # Check if asset exists on GitHub anyway (sometimes upload works but returns error)
+        local asset_name=$(basename "$ZIP_FILE_PATH")
+        printf "🔍 Debug: Checking if asset exists on GitHub despite error...\n"
+        if gh release view "v$RELEASE_VERSION" --json assets --jq ".assets[].name" 2>/dev/null | grep -q "$asset_name"; then
+            printf "✅ Asset found on GitHub - upload was actually successful!\n"
+            step_done
+            return 0
+        else
+            printf "❌ Upload failed and asset not found on GitHub\n"
+            printf "   Exit code: $upload_exit_code\n"
+            printf "   Error output: '$upload_output'\n"
+            trap - EXIT
+            return 1
+        fi
     fi
 
     wp_post_create_release
