@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.8.11] - 2025-09-16
 * BUG: I hate life.
 
 ## [0.8.10] - 2025-09-16
