@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.8.13] - 2025-09-17
 * BUG: Remove all debugging. I'm potato.
 
