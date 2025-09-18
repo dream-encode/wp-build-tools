@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.17] - 2025-09-18
+* BUG: Maybe fix package.json deletion.
+
 ## [0.8.16] - 2025-09-18
 * BUG: Include composer.json in the block theme build because it uses Laravel.
 
