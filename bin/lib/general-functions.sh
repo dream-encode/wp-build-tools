@@ -162,12 +162,14 @@ function get_next_version_replacement_files() {
 
 # Get ZIP exclusions list for build processes.
 function get_zip_folder_exclusions() {
+    # Get current directory name to check for specific projects
+    local current_dir_name=$(basename "$(pwd)")
+
     # Default exclusions list
     local default_exclusions=(
         "*.git*"
         "*.dist"
         ".env*"
-        "composer.*"
         "package.json"
         "package-lock.json"
         "*.lock"
@@ -200,6 +202,11 @@ function get_zip_folder_exclusions() {
         "blocks/*/src"
         "*/blocks/*/src"
     )
+
+    # Add composer.* exclusions for all projects except max-marine-block-theme-2025
+    if [ "$current_dir_name" != "max-marine-block-theme-2025" ]; then
+        default_exclusions+=("composer.*")
+    fi
 
     # Check if we should exclude node_modules directory based on dependencies.
     if [ -f "package.json" ] && command -v jq >/dev/null 2>&1; then
