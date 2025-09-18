@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Fix sandbox tests...again.
+
 ## [0.8.19] - 2025-09-18
 * BUG: Fix sandbox tests.
 
