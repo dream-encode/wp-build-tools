@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.8.17] - 2025-09-18
 * BUG: Maybe fix package.json deletion.
 
