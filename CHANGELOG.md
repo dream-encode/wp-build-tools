@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.8.16] - 2025-09-18
 * BUG: Include composer.json in the block theme build because it uses Laravel.
 
 ## [0.8.15] - 2025-09-17
