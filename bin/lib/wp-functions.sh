@@ -521,7 +521,7 @@ function wp_create_release() {
         return 1
     fi
 
-    # Check build process if build scripts exist
+    # Check if build scripts exist (but don't run them in source directory)
     if [ -f "package.json" ] && command -v jq >/dev/null 2>&1; then
         local package_manager=$(get_package_manager_for_project)
         local has_build_script=false
@@ -537,30 +537,13 @@ function wp_create_release() {
         fi
 
         if [ "$has_build_script" = true ]; then
-            printf "\n  🔨 Testing build process..."
-
-            # Run build test and capture output
-            local build_output
-            local build_exit_code
-
-            build_output=$($package_manager run $build_script 2>&1)
-            build_exit_code=$?
-
-            if [ $build_exit_code -eq 0 ]; then
-                printf "Done!\n"
-            else
-                printf "\n❌ Build process failed. Please fix build errors before releasing.\n"
-                printf "💡 Run '$package_manager run $build_script' to see detailed errors.\n"
-                printf "📋 Build error preview:\n"
-                echo "$build_output" | tail -5 | sed 's/^/   /'
-                printf "\n"
-                return 1
-            fi
-
+            printf "\n  🔨 Build script detected: $build_script ✅\n"
             echo "  ✅ Pre-release checks complete!"
         else
             step_done
         fi
+    else
+        step_done
     fi
 
     # Detect WordPress project types
