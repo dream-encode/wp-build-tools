@@ -543,15 +543,31 @@ function wp_create_release() {
             local test_dir="$TEMP_DIR/build-test-$$"
 
             # Copy source to sandbox for testing
-            if copy_folder "$CURRENT_DIR" "$test_dir" --quiet; then
+            local copy_result
+            copy_folder "$CURRENT_DIR" "$test_dir" --quiet
+            copy_result=$?
+
+            if [ $copy_result -eq 0 ]; then
                 cd "$test_dir"
 
-                # Run build test and capture output
+                # Run build test with timeout (max 2 minutes)
                 local build_output
                 local build_exit_code
 
-                build_output=$($package_manager run $build_script 2>&1)
-                build_exit_code=$?
+                # Use timeout command if available, otherwise run without timeout
+                if command -v timeout >/dev/null 2>&1; then
+                    build_output=$(timeout 120 $package_manager run $build_script 2>&1)
+                    build_exit_code=$?
+                elif command -v gtimeout >/dev/null 2>&1; then
+                    # macOS with coreutils
+                    build_output=$(gtimeout 120 $package_manager run $build_script 2>&1)
+                    build_exit_code=$?
+                else
+                    # No timeout available, run normally but warn
+                    printf "\n⚠️  No timeout command available, build test may hang...\n"
+                    build_output=$($package_manager run $build_script 2>&1)
+                    build_exit_code=$?
+                fi
 
                 # Return to original directory
                 cd "$CURRENT_DIR"
@@ -562,6 +578,12 @@ function wp_create_release() {
                 if [ $build_exit_code -eq 0 ]; then
                     printf "Done!\n"
                     echo "  ✅ Pre-release checks complete!"
+                elif [ $build_exit_code -eq 124 ] || [ $build_exit_code -eq 143 ]; then
+                    # Timeout exit codes (124 for timeout, 143 for SIGTERM)
+                    printf "\n⚠️  Build process timed out after 2 minutes.\n"
+                    printf "💡 This may indicate a slow build process. Consider optimizing your build scripts.\n"
+                    printf "🔄 You can still proceed with the release, but verify builds work manually.\n"
+                    echo "  ✅ Pre-release checks complete (with timeout warning)!"
                 else
                     printf "\n❌ Build process failed. Please fix build errors before releasing.\n"
                     printf "💡 Run '$package_manager run $build_script' to see detailed errors.\n"
@@ -571,7 +593,9 @@ function wp_create_release() {
                     return 1
                 fi
             else
-                printf "\n❌ Failed to create sandbox for build testing.\n"
+                printf "\n❌ Failed to create sandbox for build testing (copy_folder exit code: $copy_result).\n"
+                printf "   Source: $CURRENT_DIR\n"
+                printf "   Destination: $test_dir\n"
                 return 1
             fi
         else

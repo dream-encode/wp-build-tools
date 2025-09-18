@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.19] - 2025-09-18
+* BUG: Fix sandbox tests.
+
 ## [0.8.18] - 2025-09-18
 * BUG: Conduct the pre-release checks in a temporary sandbox.
 
