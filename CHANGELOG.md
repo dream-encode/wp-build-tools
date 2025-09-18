@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.18] - 2025-09-18
+* BUG: Conduct the pre-release checks in a temporary sandbox.
+
 ## [0.8.17] - 2025-09-18
 * BUG: Maybe fix package.json deletion.
 

@@ -521,7 +521,7 @@ function wp_create_release() {
         return 1
     fi
 
-    # Check if build scripts exist (but don't run them in source directory)
+    # Test build scripts in a sandbox copy (if they exist)
     if [ -f "package.json" ] && command -v jq >/dev/null 2>&1; then
         local package_manager=$(get_package_manager_for_project)
         local has_build_script=false
@@ -537,8 +537,43 @@ function wp_create_release() {
         fi
 
         if [ "$has_build_script" = true ]; then
-            printf "\n  🔨 Build script detected: $build_script ✅\n"
-            echo "  ✅ Pre-release checks complete!"
+            printf "\n  🔨 Testing build process in sandbox..."
+
+            # Create a temporary sandbox directory for build testing
+            local test_dir="$TEMP_DIR/build-test-$$"
+
+            # Copy source to sandbox for testing
+            if copy_folder "$CURRENT_DIR" "$test_dir" --quiet; then
+                cd "$test_dir"
+
+                # Run build test and capture output
+                local build_output
+                local build_exit_code
+
+                build_output=$($package_manager run $build_script 2>&1)
+                build_exit_code=$?
+
+                # Return to original directory
+                cd "$CURRENT_DIR"
+
+                # Clean up test directory
+                rm -rf "$test_dir"
+
+                if [ $build_exit_code -eq 0 ]; then
+                    printf "Done!\n"
+                    echo "  ✅ Pre-release checks complete!"
+                else
+                    printf "\n❌ Build process failed. Please fix build errors before releasing.\n"
+                    printf "💡 Run '$package_manager run $build_script' to see detailed errors.\n"
+                    printf "📋 Build error preview:\n"
+                    echo "$build_output" | tail -5 | sed 's/^/   /'
+                    printf "\n"
+                    return 1
+                fi
+            else
+                printf "\n❌ Failed to create sandbox for build testing.\n"
+                return 1
+            fi
         else
             step_done
         fi
@@ -720,8 +755,12 @@ function wp_create_release() {
     fi
 
     # Upload the asset to GitHub
-    gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH"
-    step_done
+    if gh release upload "v$RELEASE_VERSION" "$ZIP_FILE_PATH" >/dev/null 2>&1; then
+        step_done
+    else
+        printf "\n❌ Error: Failed to upload release asset to GitHub\n"
+        return 1
+    fi
 
     wp_post_create_release
 
