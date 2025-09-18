@@ -203,8 +203,14 @@ function get_zip_folder_exclusions() {
         "*/blocks/*/src"
     )
 
-    # Add composer.* exclusions for all projects except max-marine-block-theme-2025
-    if [ "$current_dir_name" != "max-marine-block-theme-2025" ]; then
+    # Add composer.* exclusions only if composer.json doesn't have autoload section
+    if [ -f "composer.json" ] && command -v jq >/dev/null 2>&1; then
+        local has_autoload=$(jq -e '.autoload' composer.json >/dev/null 2>&1 && echo "true" || echo "false")
+        if [ "$has_autoload" = "false" ]; then
+            default_exclusions+=("composer.*")
+        fi
+    else
+        # No composer.json or jq not available, exclude composer files by default
         default_exclusions+=("composer.*")
     fi
 

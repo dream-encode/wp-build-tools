@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.21] - 2025-09-18
+* BUG: Example fix description.
+
 ## [0.8.20] - 2025-09-18
 * BUG: Fix sandbox tests...again.
 
