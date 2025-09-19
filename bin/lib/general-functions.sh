@@ -203,6 +203,11 @@ function get_zip_folder_exclusions() {
         "*/blocks/*/src"
     )
 
+    # Exclude top-level src directory if it contains block.json files (block plugin)
+    if [ -d "src" ] && find src -name "block.json" -type f 2>/dev/null | grep -q .; then
+        default_exclusions+=("src")
+    fi
+
     # Add composer.* exclusions only if composer.json doesn't have autoload section
     if [ -f "composer.json" ] && command -v jq >/dev/null 2>&1; then
         local has_autoload=$(jq -e '.autoload' composer.json >/dev/null 2>&1 && echo "true" || echo "false")
