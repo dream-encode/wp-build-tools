@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.22] - 2025-09-18
+* BUG: Exclude top-level src directory from block plugin release assets.
+
 ## [0.8.21] - 2025-09-18
 * BUG: Example fix description.
 
