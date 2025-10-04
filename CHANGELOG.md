@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.9.0] - 2025-10-03
 * ENH: Add a zip script.
 
 ## [0.8.22] - 2025-09-18
