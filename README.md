@@ -35,7 +35,7 @@ After installing wp-build-tools, it will automatically offer to configure your p
 
 ```bash
 npm install --save-dev @dream-encode/wp-build-tools
-# Automatically prompts to add "release": "wp-release" to package.json
+# Automatically prompts to add "release": "wp-release" and "zip": "wp-zip" to package.json
 ```
 
 ### Manual Setup
@@ -73,12 +73,33 @@ wp-release --help           # Show detailed help
 wp-release --version        # Show version info
 ```
 
+### ZIP Creation Commands
+
+```bash
+# Interactive ZIP creation (prompts for type selection)
+wp-zip
+
+# Create installation ZIP (files at root)
+wp-zip --for-install
+
+# Create versioned ZIP for Git Updater
+wp-zip --for-git-updater
+
+# Silent mode (returns only file path)
+wp-zip --quiet
+
+# Show help
+wp-zip --help
+```
+
 ### Using npm/yarn scripts (alternative)
 
 ```bash
 # If you have npm scripts configured
-npm run release
-yarn release
+npm run release    # Interactive release
+npm run zip        # Interactive ZIP creation
+yarn release       # Interactive release
+yarn zip           # Interactive ZIP creation
 ```
 
 ## What the release script does
@@ -125,6 +146,52 @@ yarn release
    - Falls back to `build` script if available
    - Creates optimized ZIP file for distribution
 
+## ZIP Creation Tool
+
+The `wp-zip` command provides standalone ZIP creation functionality for WordPress plugins and themes, separate from the full release process.
+
+### What the ZIP tool does
+
+1. **Project detection**
+   - Automatically detects WordPress plugin or theme directories
+   - Must be run from within `/wp-content/plugins/` or `/wp-content/themes/` directory
+
+2. **ZIP type selection**
+   - **For install**: Creates ZIP with files at root level (standard WordPress installation format)
+   - **For Git Updater**: Creates versioned ZIP with folder structure for Git Updater plugin
+
+3. **Build process**
+   - Copies files to temporary directory with proper exclusions
+   - Runs production build if available
+   - Removes development files and dependencies
+
+4. **File exclusions**
+   - Automatically excludes development files (node_modules, .git, tests, etc.)
+   - Respects `.wp-build-exclusions` file for custom exclusions
+   - Uses platform-specific copy tools (robocopy, rsync, tar, cp)
+
+5. **Output**
+   - Creates ZIP file in system temp directory
+   - Opens file location in system file manager
+   - Provides direct path to ZIP file
+
+### ZIP Tool Usage Examples
+
+```bash
+# Interactive mode - prompts for ZIP type
+wp-zip
+
+# Create installation ZIP
+wp-zip --for-install
+
+# Create Git Updater ZIP
+wp-zip --for-git-updater
+
+# Silent mode (for scripts)
+ZIP_PATH=$(wp-zip --for-install --quiet)
+echo "ZIP created at: $ZIP_PATH"
+```
+
 ## Configuration
 
 ### Automatic Project Setup
@@ -134,8 +201,8 @@ When you install `@dream-encode/wp-build-tools` in a project, it will automatica
 1. **Detect your project** - Finds your package.json
 2. **Analyze existing scripts** - Checks for existing release scripts
 3. **Prompt for setup** - Asks permission before making changes (in interactive mode)
-4. **Backup existing scripts** - Saves any existing release script as "release-backup"
-5. **Add release script** - Adds `"release": "wp-release"` to your package.json
+4. **Backup existing scripts** - Saves any existing scripts as "release-backup" and "zip-backup"
+5. **Add scripts** - Adds `"release": "wp-release"` and `"zip": "wp-zip"` to your package.json
 
 #### Setup Options
 
@@ -155,18 +222,21 @@ NO_SETUP=1 npm install @dream-encode/wp-build-tools
 ```json
 {
   "scripts": {
-    "release": "wp-release"
+    "release": "wp-release",
+    "zip": "wp-zip"
   }
 }
 ```
 
-If you already have a release script, it will be backed up:
+If you already have existing scripts, they will be backed up:
 
 ```json
 {
   "scripts": {
     "release": "wp-release",
-    "release-backup": "your-previous-command"
+    "zip": "wp-zip",
+    "release-backup": "your-previous-release-command",
+    "zip-backup": "your-previous-zip-command"
   }
 }
 ```

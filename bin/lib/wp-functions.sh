@@ -194,8 +194,6 @@ function wp_plugin_filename() {
     echo "$(wp_get_plugin_name).php"
 }
 
-
-
 # Get current plugin version from main PHP file
 function wp_plugin_current_version() {
     local PLUGIN_FILE="$(wp_plugin_filename)"

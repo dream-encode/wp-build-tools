@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.8.22] - 2025-09-18
 * BUG: Exclude top-level src directory from block plugin release assets.
 
