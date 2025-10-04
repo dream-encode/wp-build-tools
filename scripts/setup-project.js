@@ -71,6 +71,7 @@ function writePackageJson(projectRoot, packageData) {
 
 function analyzeCurrentSetup(pkg) {
     const releaseScript = pkg.scripts?.release;
+    const zipScript = pkg.scripts?.zip;
 
     // Consider these as properly configured:
     // - "wp-release"
@@ -82,14 +83,25 @@ function analyzeCurrentSetup(pkg) {
         'npx @dream-encode/wp-build-tools'
     ];
 
-    const isAlreadyConfigured = releaseScript && validReleaseScripts.includes(releaseScript.trim());
+    // Valid zip scripts
+    const validZipScripts = [
+        'wp-zip',
+        'npx wp-zip'
+    ];
+
+    const isReleaseConfigured = releaseScript && validReleaseScripts.includes(releaseScript.trim());
+    const isZipConfigured = zipScript && validZipScripts.includes(zipScript.trim());
 
     const analysis = {
         hasScripts: !!pkg.scripts,
         hasReleaseScript: !!(pkg.scripts && pkg.scripts.release),
+        hasZipScript: !!(pkg.scripts && pkg.scripts.zip),
         currentReleaseScript: releaseScript,
-        isAlreadyConfigured: isAlreadyConfigured,
-        needsSetup: !isAlreadyConfigured
+        currentZipScript: zipScript,
+        isReleaseConfigured: isReleaseConfigured,
+        isZipConfigured: isZipConfigured,
+        isAlreadyConfigured: isReleaseConfigured && isZipConfigured,
+        needsSetup: !isReleaseConfigured || !isZipConfigured
     };
 
     return analysis;
@@ -114,8 +126,9 @@ async function setupReleaseScript(projectRoot, pkg, analysis, force = false) {
     log('========================', 'blue');
 
     if (analysis.isAlreadyConfigured) {
-        log('✅ Release script already configured correctly!', 'green');
+        log('✅ Scripts already configured correctly!', 'green');
         log('   Current: "release": "wp-release"', 'blue');
+        log('   Current: "zip": "wp-zip"', 'blue');
         return true;
     }
 
@@ -126,11 +139,18 @@ async function setupReleaseScript(projectRoot, pkg, analysis, force = false) {
         log('   • Add "scripts" section to package.json', 'blue');
     }
 
-    if (analysis.hasReleaseScript) {
+    if (analysis.hasReleaseScript && !analysis.isReleaseConfigured) {
         log(`   • Backup existing release script: "${analysis.currentReleaseScript}"`, 'yellow');
         log('   • Replace with: "wp-release"', 'blue');
-    } else {
+    } else if (!analysis.hasReleaseScript) {
         log('   • Add new release script: "wp-release"', 'blue');
+    }
+
+    if (analysis.hasZipScript && !analysis.isZipConfigured) {
+        log(`   • Backup existing zip script: "${analysis.currentZipScript}"`, 'yellow');
+        log('   • Replace with: "wp-zip"', 'blue');
+    } else if (!analysis.hasZipScript) {
+        log('   • Add new zip script: "wp-zip"', 'blue');
     }
 
     // Get user permission (unless forced)
@@ -154,13 +174,20 @@ async function setupReleaseScript(projectRoot, pkg, analysis, force = false) {
     }
 
     // Backup existing release script
-    if (analysis.hasReleaseScript) {
+    if (analysis.hasReleaseScript && !analysis.isReleaseConfigured) {
         pkg.scripts['release-backup'] = analysis.currentReleaseScript;
-        log(`   ✅ Backed up existing script to "release-backup"`, 'green');
+        log(`   ✅ Backed up existing release script to "release-backup"`, 'green');
     }
 
-    // Set the new release script
+    // Backup existing zip script
+    if (analysis.hasZipScript && !analysis.isZipConfigured) {
+        pkg.scripts['zip-backup'] = analysis.currentZipScript;
+        log(`   ✅ Backed up existing zip script to "zip-backup"`, 'green');
+    }
+
+    // Set the new scripts
     pkg.scripts.release = 'wp-release';
+    pkg.scripts.zip = 'wp-zip';
 
     // Write the updated package.json
     if (writePackageJson(projectRoot, pkg)) {
@@ -170,11 +197,17 @@ async function setupReleaseScript(projectRoot, pkg, analysis, force = false) {
         log('==================', 'green');
         log('\n📋 You can now use:', 'bold');
         log('   npm run release     # Interactive release', 'blue');
+        log('   npm run zip         # Create ZIP files', 'blue');
         log('   yarn release        # Interactive release', 'blue');
-        log('   wp-release --help   # See all options', 'blue');
+        log('   yarn zip            # Create ZIP files', 'blue');
+        log('   wp-release --help   # See all release options', 'blue');
+        log('   wp-zip --help       # See all ZIP options', 'blue');
 
-        if (analysis.hasReleaseScript) {
+        if (analysis.hasReleaseScript && !analysis.isReleaseConfigured) {
             log('\n💡 Your previous release script is saved as "release-backup"', 'yellow');
+        }
+        if (analysis.hasZipScript && !analysis.isZipConfigured) {
+            log('💡 Your previous zip script is saved as "zip-backup"', 'yellow');
         }
 
         return true;

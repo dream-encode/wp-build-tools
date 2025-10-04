@@ -1,6 +1,6 @@
 {
   "name": "@dream-encode/wp-build-tools",
-  "version": "0.8.22",
+  "version": "0.9.0",
   "description": "Some scripts to help handle builds, releases, testing, etc.",
   "homepage": "https://github.com/dream-encode/wp-build-tools#readme",
   "type": "commonjs",
@@ -15,6 +15,7 @@
   "author": "David B",
   "bin": {
     "wp-release": "./bin/wp-release.js",
+    "wp-zip": "./bin/wp-zip.js",
     "wp-build-tools": "./bin/setup.js"
   },
   "files": [
@@ -23,7 +24,7 @@
     "config/"
   ],
   "scripts": {
-    "postinstall": "chmod +x bin/release.sh && node scripts/postinstall.js",
+    "postinstall": "chmod +x bin/release.sh bin/zip.sh && node scripts/postinstall.js",
     "test": "bash tests/wp-release-test.sh",
     "test:quick": "bash tests/wp-release-test.sh --quick",
     "test:cleanup": "bash tests/wp-release-test.sh --cleanup-only"

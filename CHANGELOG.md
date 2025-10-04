@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.0] - 2025-10-03
+* ENH: Add a zip script.
+
 ## [0.8.22] - 2025-09-18
 * BUG: Exclude top-level src directory from block plugin release assets.
 
