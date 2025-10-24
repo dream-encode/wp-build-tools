@@ -144,10 +144,6 @@ function wp_plugin_has_release_asset() {
     else
         # Plugin logic
         MAIN_FILE="$(wp_plugin_filename)"
-
-        if [ "$PLUGIN_NAME" = "max-marine-warehouse-operations-wp-plugin" ]; then
-            MAIN_FILE="max-marine-electronics-warehouse-operations.php"
-        fi
     fi
 
     if [ ! -f "$MAIN_FILE" ]; then

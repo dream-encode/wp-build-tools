@@ -209,12 +209,7 @@ get_project_main_file() {
             echo "style.css"
             ;;
         "plugin"|"block-plugin")
-            # Handle special case for warehouse operations plugin
-            if [ "$project_name" = "max-marine-warehouse-operations-wp-plugin" ]; then
-                echo "max-marine-electronics-warehouse-operations.php"
-            else
-                echo "$project_name.php"
-            fi
+            echo "$project_name.php"
             ;;
         *)
             echo ""
