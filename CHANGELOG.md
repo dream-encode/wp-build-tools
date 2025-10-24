@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* TWK: Remove exceptions for the Max Marine warehouse operations plugin filename.
 
 ## [0.9.0] - 2025-10-03
 * ENH: Add a zip script.
