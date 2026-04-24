@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.9.8] - 2026-04-23
 * BUG: Publish - One more time tonight X2.
 
