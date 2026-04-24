@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Publish - Use OIDC.
 
 ## [0.9.2] - 2026-04-23
 * BUG: Exclude .git dir when checking for Ray debugging.
