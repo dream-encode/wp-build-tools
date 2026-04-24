@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Release - Another early exit fix.
+* BUG: Release - Account for both ...PLUGIN_VERSION and ...THEME_VERSION in the constants check.
 
 ## [0.9.15] - 2026-04-24
 * BUG: Release - Another early exit fix.
