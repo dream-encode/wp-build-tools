@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.9.2] - 2026-04-23
 * BUG: Exclude .git dir when checking for Ray debugging.
 
 ## [0.9.1] - 2025-10-24
