@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.10] - 2026-04-24
+* BUG: Publish - Maybe try unsetting the token.
+
 ## [0.9.9] - 2026-04-24
 * BUG: Publish - Update package.json.
 
