@@ -323,7 +323,7 @@ validate_build_process() {
     fi
 
     # Check if build artifacts exist
-    local build_dirs=("build" "assets/dist/js" "assets/dist/css" "admin/assets/dist" "public/assets/dist")
+    local build_dirs=("build" "assets/dist" "assets/dist/js" "assets/dist/css" "admin/assets/dist" "public/assets/dist")
     local found_artifacts=false
 
     for build_dir in "${build_dirs[@]}"; do
