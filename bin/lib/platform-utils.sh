@@ -148,7 +148,15 @@ function get_7z_exclusions() {
     local sevenz_excludes=()
 
     for exclusion in "${exclusions[@]}"; do
-        sevenz_excludes+=("-xr!${exclusion}")
+        # Clean up the exclusion pattern for 7z
+        local clean_exclusion="${exclusion}"
+
+        # Remove ./ prefix as 7z doesn't handle it well with -xr!
+        if [[ "$clean_exclusion" == ./* ]]; then
+            clean_exclusion="${clean_exclusion#./}"
+        fi
+
+        sevenz_excludes+=("-xr!${clean_exclusion}")
     done
 
     echo "${sevenz_excludes[@]}"

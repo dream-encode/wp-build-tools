@@ -34,7 +34,7 @@ validate_version_bump() {
     fi
 
     # Check block.json files (for block plugins)
-    local block_files=$(find "$project_path" -name "block.json" -not -path "*/node_modules/*" -not -path "*/vendor/*" 2>/dev/null)
+    local block_files=$(find "$project_path" -name "block.json" -not -path "*/node_modules/*" -not -path "*/vendor/*" -not -path "*/build/*" 2>/dev/null)
     if [ -n "$block_files" ]; then
         while IFS= read -r block_file; do
             if [ -f "$block_file" ]; then
@@ -71,6 +71,9 @@ validate_version_bump() {
     # Print results
     for result in "${validation_results[@]}"; do
         echo "    $result"
+        if [[ "$result" == *"⚠️"* ]]; then
+            WARNING_COUNT=$((WARNING_COUNT + 1))
+        fi
     done
 
     # Return success if no failures
@@ -100,10 +103,10 @@ validate_zip_contents() {
     local zip_contents
     if command -v unzip >/dev/null 2>&1; then
         # Use unzip -Z to get just filenames
-        zip_contents=$(unzip -Z1 "$zip_file" 2>/dev/null)
+        zip_contents=$(unzip -Z1 "$zip_file" 2>/dev/null | sed 's/\r//g')
     elif command -v 7z >/dev/null 2>&1; then
         # Use 7z with simpler parsing
-        zip_contents=$(7z l "$zip_file" 2>/dev/null | awk '/^[0-9]{4}-[0-9]{2}-[0-9]{2}/ {print $NF}')
+        zip_contents=$(7z l "$zip_file" 2>/dev/null | awk '/^[0-9]{4}-[0-9]{2}-[0-9]{2}/ {print $NF}' | sed 's/\r//g')
     else
         echo "    ❌ No ZIP extraction tool available"
         return 1
@@ -119,26 +122,64 @@ validate_zip_contents() {
         fi
     fi
 
-    # Check for package.json
-    if echo "$zip_contents" | grep -q "package.json"; then
-        validation_results+=("✅ package.json included")
-    else
-        validation_results+=("❌ package.json missing")
-    fi
-
-    # Check for exclusions
-    local excluded_items=("node_modules" ".git" "vendor" "tests" ".gitignore" ".wp-build-exclusions")
+    # Check for unconditional exclusions.
+    local excluded_items=(".git" "tests" ".gitignore" ".wp-build-exclusions" "assets/src" "webpack.config.js" "yarn.lock")
     for item in "${excluded_items[@]}"; do
-        if echo "$zip_contents" | grep -q "$item"; then
-            validation_results+=("❌ Excluded item found in ZIP: $item")
+        local item_regex=$(echo "$item" | sed 's/\./\\./g')
+        if echo "$zip_contents" | grep -q -E "(^|/)$item_regex(/|$)"; then
+            if [[ "$item" == "tests" ]] && ! echo "$zip_contents" | grep -q -E "^tests/|^[^/]+/tests/"; then
+                validation_results+=("✅ Excluded item properly excluded: $item")
+            else
+                local matching_files=$(echo "$zip_contents" | grep -E "(^|/)$item_regex(/|$)" | head -n 1)
+                validation_results+=("❌ Excluded item found in ZIP: $item (Matched: $matching_files)")
+            fi
         else
             validation_results+=("✅ Excluded item properly excluded: $item")
         fi
     done
 
+    # Dynamically validate node_modules based on whether project has production npm deps.
+    if [ -f "$project_path/package.json" ] && command -v jq >/dev/null 2>&1; then
+        local npm_prod_count=$(jq '.dependencies | length' "$project_path/package.json" 2>/dev/null || echo "0")
+        if [ "$npm_prod_count" -gt 0 ]; then
+            if echo "$zip_contents" | grep -q -E "(^|/)node_modules(/|$)"; then
+                validation_results+=("✅ node_modules included (project has production npm deps)")
+            else
+                validation_results+=("⚠️  node_modules missing but project has production npm deps")
+            fi
+        else
+            if echo "$zip_contents" | grep -q -E "(^|/)node_modules(/|$)"; then
+                local match=$(echo "$zip_contents" | grep -E "(^|/)node_modules(/|$)" | head -n 1)
+                validation_results+=("❌ node_modules found in ZIP but project has no production npm deps (Matched: $match)")
+            else
+                validation_results+=("✅ node_modules excluded (no production npm deps)")
+            fi
+        fi
+    fi
+
+    # Dynamically validate vendor based on whether project has production composer deps.
+    if [ -f "$project_path/composer.json" ] && command -v jq >/dev/null 2>&1; then
+        local composer_prod_count=$(jq '.require | length' "$project_path/composer.json" 2>/dev/null || echo "0")
+        local composer_php_only=$(jq '.require | keys | length == 1 and .[0] == "php"' "$project_path/composer.json" 2>/dev/null || echo "false")
+        if [ "$composer_prod_count" -gt 0 ] && [ "$composer_php_only" != "true" ]; then
+            if echo "$zip_contents" | grep -q -E "(^|/)vendor(/|$)"; then
+                validation_results+=("✅ vendor included (project has production composer deps)")
+            else
+                validation_results+=("⚠️  vendor missing but project has production composer deps")
+            fi
+        else
+            if echo "$zip_contents" | grep -q -E "(^|/)vendor(/|$)"; then
+                local match=$(echo "$zip_contents" | grep -E "(^|/)vendor(/|$)" | head -n 1)
+                validation_results+=("❌ vendor found in ZIP but project has no production composer deps (Matched: $match)")
+            else
+                validation_results+=("✅ vendor excluded (no production composer deps)")
+            fi
+        fi
+    fi
+
     # Check for build artifacts (if build script exists)
     if project_has_build_script "$project_path"; then
-        if echo "$zip_contents" | grep -q "build/\|dist/"; then
+        if echo "$zip_contents" | grep -qE "build/|assets/dist/"; then
             validation_results+=("✅ Build artifacts included")
         else
             validation_results+=("⚠️  No build artifacts found (may be expected)")
@@ -148,6 +189,9 @@ validate_zip_contents() {
     # Print results
     for result in "${validation_results[@]}"; do
         echo "    $result"
+        if [[ "$result" == *"⚠️"* ]]; then
+            WARNING_COUNT=$((WARNING_COUNT + 1))
+        fi
     done
 
     # Return success if no failures
@@ -178,7 +222,7 @@ validate_changelog_updates() {
     if grep -q "## \[$expected_version\]" "$changelog_file"; then
         validation_results+=("✅ Version $expected_version found in changelog")
     else
-        validation_results+=("❌ Version $expected_version not found in changelog")
+        validation_results+=("⚠️  Version $expected_version not found in changelog (may be missing [NEXT_VERSION] template)")
     fi
 
     # Check if version has a date
@@ -189,16 +233,17 @@ validate_changelog_updates() {
         validation_results+=("⚠️  Version date may not be current")
     fi
 
-    # Check for [NEXT_VERSION] template
+    # Verify the [NEXT_VERSION] template was replaced (should not be present in a final release).
     if grep -q "\[NEXT_VERSION\]" "$changelog_file"; then
-        validation_results+=("✅ [NEXT_VERSION] template found")
-    else
-        validation_results+=("⚠️  [NEXT_VERSION] template not found")
+        validation_results+=("❌ [NEXT_VERSION] template was not replaced in changelog")
     fi
 
     # Print results
     for result in "${validation_results[@]}"; do
         echo "    $result"
+        if [[ "$result" == *"⚠️"* ]]; then
+            WARNING_COUNT=$((WARNING_COUNT + 1))
+        fi
     done
 
     # Return success if no failures
@@ -250,6 +295,9 @@ validate_project_structure() {
     # Print results
     for result in "${validation_results[@]}"; do
         echo "    $result"
+        if [[ "$result" == *"⚠️"* ]]; then
+            WARNING_COUNT=$((WARNING_COUNT + 1))
+        fi
     done
 
     # Return success if no failures
@@ -275,7 +323,7 @@ validate_build_process() {
     fi
 
     # Check if build artifacts exist
-    local build_dirs=("build" "dist" "assets/js" "assets/css")
+    local build_dirs=("build" "assets/dist/js" "assets/dist/css" "admin/assets/dist" "public/assets/dist")
     local found_artifacts=false
 
     for build_dir in "${build_dirs[@]}"; do
@@ -292,6 +340,9 @@ validate_build_process() {
     # Print results
     for result in "${validation_results[@]}"; do
         echo "    $result"
+        if [[ "$result" == *"⚠️"* ]]; then
+            WARNING_COUNT=$((WARNING_COUNT + 1))
+        fi
     done
 
     return 0

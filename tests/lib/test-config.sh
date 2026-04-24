@@ -187,7 +187,7 @@ project_has_changelog() {
 project_has_build_script() {
     local project_path="$1"
     if [ -f "$project_path/package.json" ] && command -v jq >/dev/null 2>&1; then
-        jq -e '.scripts.build // .scripts.production' "$project_path/package.json" >/dev/null 2>&1
+        jq -e '.scripts.build // .scripts.production // .scripts.prod' "$project_path/package.json" >/dev/null 2>&1
     else
         return 1
     fi
