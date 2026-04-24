@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Publish - Use exact workflow from NPM example.
 
 ## [0.9.10] - 2026-04-24
 * BUG: Publish - Maybe try unsetting the token.
