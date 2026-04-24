@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Publish - Kill me.
 
 ## [0.9.5] - 2026-04-23
 * BUG: Publish - Another fix.
