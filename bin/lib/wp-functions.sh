@@ -341,16 +341,17 @@ function wp_zip() {
         step_start "[1/4] 📁 Copying files to temporary directory"
     fi
     if [ "$quiet_mode" = "true" ]; then
-        copy_folder "$CURRENT_DIR" "$COPY_DIR" --quiet
+        if ! copy_folder "$CURRENT_DIR" "$COPY_DIR" --quiet; then
+            echo "❌ Error: Failed to copy files to temporary directory" >&2
+            return 1
+        fi
     else
         copy_folder "$CURRENT_DIR" "$COPY_DIR"
-    fi
-    copy_result=$?
-    if [ $copy_result -ne 0 ]; then
-        echo "❌ Error: Failed to copy files to temporary directory (exit code: $copy_result)"
-        return 1
-    fi
-    if [ "$quiet_mode" != "true" ]; then
+        copy_result=$?
+        if [ $copy_result -ne 0 ]; then
+            echo "❌ Error: Failed to copy files to temporary directory (exit code: $copy_result)"
+            return 1
+        fi
         step_done
     fi
 
@@ -361,16 +362,17 @@ function wp_zip() {
         step_start "[2/4] 🏗️  Building for production"
     fi
     if [ "$quiet_mode" = "true" ]; then
-        build_for_production --quiet
+        if ! build_for_production --quiet; then
+            echo "❌ Error: Build for production failed" >&2
+            return 1
+        fi
     else
         build_for_production
-    fi
-    build_result=$?
-    if [ $build_result -ne 0 ]; then
-        echo "❌ Error: Build for production failed (exit code: $build_result)"
-        return 1
-    fi
-    if [ "$quiet_mode" != "true" ]; then
+        build_result=$?
+        if [ $build_result -ne 0 ]; then
+            echo "❌ Error: Build for production failed (exit code: $build_result)"
+            return 1
+        fi
         step_done
     fi
 
@@ -379,16 +381,17 @@ function wp_zip() {
         step_start "[3/4] 📦 Creating ZIP archive"
     fi
     if [ "$quiet_mode" = "true" ]; then
-        zip_folder "$COPY_DIR" "$ZIP_FILENAME" "$ZIP_NAME" --quiet
+        if ! zip_folder "$COPY_DIR" "$ZIP_FILENAME" "$ZIP_NAME" --quiet; then
+            echo "❌ Error: ZIP file creation failed" >&2
+            return 1
+        fi
     else
         zip_folder "$COPY_DIR" "$ZIP_FILENAME" "$ZIP_NAME"
-    fi
-    zip_result=$?
-    if [ $zip_result -ne 0 ]; then
-        echo "❌ Error: ZIP file creation failed (exit code: $zip_result)"
-        return 1
-    fi
-    if [ "$quiet_mode" != "true" ]; then
+        zip_result=$?
+        if [ $zip_result -ne 0 ]; then
+            echo "❌ Error: ZIP file creation failed (exit code: $zip_result)"
+            return 1
+        fi
         step_done
     fi
 
@@ -642,7 +645,8 @@ function wp_create_release() {
 
     # Step 5: Create WordPress release asset
     step_start "[5/6] 📦 Creating WordPress release asset"
-    local ZIP_FILE_PATH=$(wp_zip --for-git-updater --quiet)
+    local ZIP_FILE_PATH
+    ZIP_FILE_PATH=$(wp_zip --for-git-updater --quiet)
     local zip_exit_code=$?
 
     # Check if ZIP creation was successful
