@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Release - Fix early exit.
 
 ## [0.9.13] - 2026-04-24
 * BUG: Tests - Lots of fixes and cleanup.
