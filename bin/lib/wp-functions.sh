@@ -585,8 +585,8 @@ function wp_create_release() {
         step_start "[3/6] 🌐 Updating translation files"
         wp_plugin_update_pot >/dev/null 2>&1
 
-        git add languages/* >/dev/null 2>&1
-        gc "Updating POT" >/dev/null 2>&1
+        git add languages/* >/dev/null 2>&1 || true
+        gc "Updating POT" >/dev/null 2>&1 || true
         step_done
     else
         step_start "[3/6] 🌐 Checking translation files"
