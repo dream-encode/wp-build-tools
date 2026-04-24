@@ -543,15 +543,17 @@ function git_create_release_quiet() {
     # Push latest code to main (quietly)
     git push -q >/dev/null 2>&1
 
-    # Create the release branch (quietly)
+    # Create the release branch (quietly), replacing any stale local branch from a previous run.
+    git branch -D "release/$CURRENT_VERSION" >/dev/null 2>&1 || true
     git checkout -b "release/$CURRENT_VERSION" >/dev/null 2>&1
-    git push -q --set-upstream origin "release/$CURRENT_VERSION" >/dev/null 2>&1
+    git push -q --set-upstream --force origin "release/$CURRENT_VERSION" >/dev/null 2>&1
 
     echo "    - Release branch created."
 
-    # Tag the version (quietly)
+    # Tag the version (quietly), replacing any stale local tag from a previous run.
+    git tag -d "v$CURRENT_VERSION" >/dev/null 2>&1 || true
     git tag -a "v$CURRENT_VERSION" -m "Version $CURRENT_VERSION" >/dev/null 2>&1
-    git push -q -u origin "v$CURRENT_VERSION" >/dev/null 2>&1
+    git push -q --force -u origin "v$CURRENT_VERSION" >/dev/null 2>&1
 
     echo "    - Version $CURRENT_VERSION tagged."
 
