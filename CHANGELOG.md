@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.9.14] - 2026-04-24
 * BUG: Release - Fix early exit.
 
