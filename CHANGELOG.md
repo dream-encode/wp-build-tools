@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.9.5] - 2026-04-23
 * BUG: Publish - Another fix.
 
 ## [0.9.4] - 2026-04-23
