@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.12] - 2026-04-24
+* BUG: Publish - Update package.json name.
+
 ## [0.9.11] - 2026-04-24
 * BUG: Publish - Use exact workflow from NPM example.
 
