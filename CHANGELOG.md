@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.9.17] - 2026-04-24
 * BUG: Release - Fix silent failure.
 
 ## [0.9.16] - 2026-04-24
