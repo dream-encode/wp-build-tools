@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.9.3] - 2026-04-23
 * BUG: Publish - Use OIDC.
 
