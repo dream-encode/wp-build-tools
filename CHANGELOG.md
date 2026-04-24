@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.7] - 2026-04-23
+* BUG: Publish - One more time tonight.
+
 ## [0.9.6] - 2026-04-23
 * BUG: Publish - Kill me.
 
