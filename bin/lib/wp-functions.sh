@@ -583,7 +583,7 @@ function wp_create_release() {
     # Step 3: Maybe update POT file for WP plugins and themes
     if [ "$IS_WP_PLUGIN" = true ] || [ "$IS_WP_THEME" = true ]; then
         step_start "[3/6] 🌐 Updating translation files"
-        wp_plugin_update_pot >/dev/null 2>&1
+        wp_plugin_update_pot >/dev/null 2>&1 || true
 
         git add languages/* >/dev/null 2>&1 || true
         gc "Updating POT" >/dev/null 2>&1 || true
