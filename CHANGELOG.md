@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Tests - Lots of fixes and cleanup.
 
 ## [0.9.12] - 2026-04-24
 * BUG: Publish - Update package.json name.
