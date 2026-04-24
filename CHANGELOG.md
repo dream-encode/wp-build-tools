@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* BUG: Publish - Another fix.
 
 ## [0.9.4] - 2026-04-23
 * BUG: Publish - Add back token.
