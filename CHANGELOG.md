@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.9.13] - 2026-04-24
 * BUG: Tests - Lots of fixes and cleanup.
 
 ## [0.9.12] - 2026-04-24
