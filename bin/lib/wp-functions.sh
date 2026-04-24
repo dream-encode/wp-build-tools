@@ -463,6 +463,10 @@ function wp_bump_version() {
                 sed_inplace "s/define.*${PLUGIN_CONSTANT}_PLUGIN_VERSION.*$/define( '${PLUGIN_CONSTANT}_PLUGIN_VERSION', '$NEW_VERSION' );/" "$CONSTANTS_FILE"
                 echo "Updated ${PLUGIN_CONSTANT}_PLUGIN_VERSION constant in $CONSTANTS_FILE."
             fi
+            if grep -q "define.*${PLUGIN_CONSTANT}_THEME_VERSION" "$CONSTANTS_FILE"; then
+                sed_inplace "s/define.*${PLUGIN_CONSTANT}_THEME_VERSION.*$/define( '${PLUGIN_CONSTANT}_THEME_VERSION', '$NEW_VERSION' );/" "$CONSTANTS_FILE"
+                echo "Updated ${PLUGIN_CONSTANT}_THEME_VERSION constant in $CONSTANTS_FILE."
+            fi
         fi
     done
 

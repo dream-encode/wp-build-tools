@@ -344,73 +344,46 @@ extract_zip_file_from_output() {
     echo "$output" | grep -o "Created release asset: .*\.zip" | head -1 | sed 's/Created release asset: //'
 }
 
-# Run wp-release in sandbox mode (simulated)
+# Run the real production git release function against the sandbox project.
 run_wp_release_sandbox() {
     local project_path="$1"
 
     cd "$project_path"
 
-    # Simulate a comprehensive wp-release run
-    local project_name=$(basename "$(pwd)")
-    local current_version=$(jq -r '.version' package.json 2>/dev/null || echo "1.0.0")
-    local new_version=$(increment_version "$current_version" "patch")
+    local project_name
+    project_name=$(basename "$(pwd)")
 
-    # 1. Update package.json version
-    if [ -f package.json ]; then
-        jq --arg version "$new_version" '.version = $version' package.json > package.json.tmp && mv package.json.tmp package.json
+    local sandbox_bin="$SANDBOX_DIR/bin"
+
+    # Run the actual production git_create_release_quiet in an isolated subshell.
+    # Production libs are sourced here and external-service functions are overridden
+    # so no network or GitHub activity occurs. set -e is active to match production.
+    (
+        set -e
+        cd "$project_path"
+
+        source "$sandbox_bin/lib/platform-utils.sh"
+        source "$sandbox_bin/lib/general-functions.sh"
+        source "$sandbox_bin/lib/git-functions.sh"
+        source "$sandbox_bin/lib/wp-functions.sh"
+
+        github_create_release() { return 0; }
+        wp_plugin_update_pot() { return 0; }
+
+        git_create_release_quiet "patch"
+    )
+
+    if [ $? -ne 0 ]; then
+        echo "❌ git_create_release_quiet failed"
+        cd - >/dev/null 2>&1
+        return 1
     fi
 
-    # 2. Update PHP file headers (plugins and themes)
-    for php_file in *.php; do
-        if [ -f "$php_file" ]; then
-            sed -i "s/Version:.*$/Version:           $new_version/" "$php_file" 2>/dev/null || true
-        fi
-    done
+    # Read the version that was written by git_create_release_quiet.
+    local new_version
+    new_version=$(jq -r '.version' package.json 2>/dev/null || echo "unknown")
 
-    # 2b. Update theme style.css header (themes only)
-    if [ -f "style.css" ]; then
-        sed -i "s/Version:.*$/Version:           $new_version/" "style.css" 2>/dev/null || true
-    fi
-
-    # 3. Update block.json files (exclude third-party libraries)
-    local block_files
-    block_files=$(find . -name "block.json" \
-        -not -path "./node_modules/*" \
-        -not -path "./vendor/*" \
-        -not -path "./libraries/*" \
-        -not -path "./lib/*" \
-        -not -path "./libs/*" 2>/dev/null || true)
-
-    if [ -n "$block_files" ]; then
-        while IFS= read -r block_file; do
-            if [ -f "$block_file" ]; then
-                jq --arg version "$new_version" '.version = $version' "$block_file" > "$block_file.tmp" && mv "$block_file.tmp" "$block_file"
-            fi
-        done <<< "$block_files"
-    fi
-
-    # 4. Update constants files (Max Marine specific patterns)
-    for constants_file in includes/*constants.php inc/constants.php; do
-        if [ -f "$constants_file" ]; then
-            # Special case for warehouse operations (MMEWOA)
-            if [[ "$project_name" == *"warehouse-operations"* ]]; then
-                sed -i "s/define( 'MMEWOA_PLUGIN_VERSION', '[^']*' );/define( 'MMEWOA_PLUGIN_VERSION', '$new_version' );/" "$constants_file" 2>/dev/null || true
-            fi
-
-            # Generic version patterns - update any VERSION constant
-            sed -i "s/\(define( '[^']*_PLUGIN_VERSION', '\)[^']*\(' );\)/\1$new_version\2/" "$constants_file" 2>/dev/null || true
-            sed -i "s/\(define( '[^']*_THEME_VERSION', '\)[^']*\(' );\)/\1$new_version\2/" "$constants_file" 2>/dev/null || true
-        fi
-    done
-
-    # 5. Update changelog
-    if [ -f CHANGELOG.md ]; then
-        # Replace [NEXT_VERSION] with actual version and current date
-        local current_date=$(date +"%Y-%m-%d")
-        sed -i "s/\[NEXT_VERSION\]/## [$new_version] - $current_date/" CHANGELOG.md 2>/dev/null || true
-    fi
-
-    # 5.5. Run build script (mirrors real wp_create_release -> build_for_production)
+    # Run build script if present (mirrors real wp_create_release -> build_for_production).
     local build_script=""
     if jq -e '.scripts.production' package.json >/dev/null 2>&1; then
         build_script="production"
@@ -422,7 +395,6 @@ run_wp_release_sandbox() {
     package_manager=$(get_package_manager_for_project)
 
     if [ -n "$build_script" ]; then
-        # Install all deps (including devDeps) so the build tools are available.
         if [ "$package_manager" = "yarn" ]; then
             yarn --silent install --frozen-lockfile >/dev/null 2>&1 || true
         else
@@ -431,41 +403,40 @@ run_wp_release_sandbox() {
         "$package_manager" --silent run "$build_script" >/dev/null 2>&1 || true
     fi
 
-    # After building, prune node_modules to only production deps (mirroring real release behavior).
+    # Prune to production-only deps after building.
     if [ -f "package.json" ] && command -v jq >/dev/null 2>&1; then
-        local npm_prod_deps=$(jq '.dependencies | length' package.json 2>/dev/null || echo "0")
+        local npm_prod_deps
+        npm_prod_deps=$(jq '.dependencies | length' package.json 2>/dev/null || echo "0")
         if [ "$npm_prod_deps" -gt 0 ]; then
-            # Has production deps - prune devDeps so ZIP only contains what's needed.
             if [ "$package_manager" = "yarn" ]; then
                 yarn --silent install --production=true >/dev/null 2>&1 || true
             else
                 npm --silent prune --omit=dev >/dev/null 2>&1 || true
             fi
         else
-            # No production deps - remove node_modules entirely so it's excluded from ZIP.
             rm -rf node_modules
         fi
     fi
 
-    # Install composer production deps if project has them (excluding dev-only deps).
+    # Install composer production deps if applicable.
     if [ -f "composer.json" ] && command -v composer >/dev/null 2>&1; then
-        local composer_prod_deps=$(jq '.require | length' composer.json 2>/dev/null || echo "0")
-        local composer_php_only=$(jq '.require | keys | length == 1 and .[0] == "php"' composer.json 2>/dev/null || echo "false")
+        local composer_prod_deps
+        composer_prod_deps=$(jq '.require | length' composer.json 2>/dev/null || echo "0")
+        local composer_php_only
+        composer_php_only=$(jq '.require | keys | length == 1 and .[0] == "php"' composer.json 2>/dev/null || echo "false")
         if [ "$composer_prod_deps" -gt 0 ] && [ "$composer_php_only" != "true" ]; then
             composer install --no-dev --optimize-autoloader --quiet 2>/dev/null || true
         fi
     fi
 
-    # 6. Create ZIP file with updated content
+    # Create ZIP with the same exclusion logic as the real release.
     local zip_dir
     zip_dir="$(get_cross_platform_temp_dir)/wp-build-tools-tests"
     mkdir -p "$zip_dir"
     local zip_file="${zip_dir}/${project_name}-${new_version}.zip"
 
-    # Remove old ZIP file if it exists
     [ -f "$zip_file" ] && rm -f "$zip_file"
 
-    # Use the same exclusion logic as the real wp-release (get_zip_folder_exclusions is sourced from general-functions.sh)
     local exclusions=($(get_zip_folder_exclusions))
     local sevenz_exclusions=($(get_7z_exclusions "${exclusions[@]}"))
 
@@ -484,12 +455,10 @@ run_wp_release_sandbox() {
         mv "${zip_file%.zip}.tar.gz" "$zip_file"
     fi
 
-    # Output in the format expected by extraction functions
     echo "Simulated wp-release output:"
     echo "Version $new_version"
     echo "Created release asset: $zip_file"
 
-    # Return to original directory
     cd - >/dev/null 2>&1
 
     return 0

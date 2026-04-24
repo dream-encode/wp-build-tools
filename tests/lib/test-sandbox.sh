@@ -23,10 +23,10 @@ setup_sandbox() {
         rm -rf "$SANDBOX_DIR"
     fi
 
-    # Create sandbox directory structure
+    # Create sandbox directory structure mirroring wp-content so path detection works.
     mkdir -p "$SANDBOX_DIR"
-    mkdir -p "$SANDBOX_DIR/plugins"
-    mkdir -p "$SANDBOX_DIR/themes"
+    mkdir -p "$SANDBOX_DIR/wp-content/plugins"
+    mkdir -p "$SANDBOX_DIR/wp-content/themes"
     mkdir -p "$SANDBOX_DIR/reports"
     mkdir -p "$SANDBOX_DIR/temp"
 
@@ -93,10 +93,10 @@ copy_single_project() {
     # Determine if it's a plugin or theme
     if [ -d "$MAX_MARINE_SOURCE/plugins/$project_name" ]; then
         source_path="$MAX_MARINE_SOURCE/plugins/$project_name"
-        dest_path="$SANDBOX_DIR/plugins/$project_name"
+        dest_path="$SANDBOX_DIR/wp-content/plugins/$project_name"
     elif [ -d "$MAX_MARINE_SOURCE/themes/$project_name" ]; then
         source_path="$MAX_MARINE_SOURCE/themes/$project_name"
-        dest_path="$SANDBOX_DIR/themes/$project_name"
+        dest_path="$SANDBOX_DIR/wp-content/themes/$project_name"
     else
         print_color "$RED" "❌ Project not found: $project_name"
         return 1
@@ -131,8 +131,16 @@ copy_single_project() {
         fi
     fi
 
+    local is_theme=false
+    if [ -d "$MAX_MARINE_SOURCE/themes/$project_name" ]; then
+        is_theme=true
+    fi
+
     if [ "$is_block" = true ]; then
         tar_excludes="$tar_excludes --exclude=build"
+    elif [ "$is_theme" = true ]; then
+        # Themes use assets/dist for compiled output - include it so build artifacts are present.
+        tar_excludes="$tar_excludes --exclude=admin/assets/dist --exclude=public/assets/dist"
     else
         tar_excludes="$tar_excludes --exclude=admin/assets/dist --exclude=public/assets/dist --exclude=assets/dist"
     fi
@@ -198,19 +206,19 @@ get_sandbox_projects() {
     local projects=()
 
     # Get plugins
-    if [ -d "$SANDBOX_DIR/plugins" ]; then
-        for plugin_dir in "$SANDBOX_DIR/plugins"/*; do
+    if [ -d "$SANDBOX_DIR/wp-content/plugins" ]; then
+        for plugin_dir in "$SANDBOX_DIR/wp-content/plugins"/*; do
             if [ -d "$plugin_dir" ]; then
-                projects+=("plugins/$(basename "$plugin_dir")")
+                projects+=("wp-content/plugins/$(basename "$plugin_dir")")
             fi
         done
     fi
 
     # Get themes
-    if [ -d "$SANDBOX_DIR/themes" ]; then
-        for theme_dir in "$SANDBOX_DIR/themes"/*; do
+    if [ -d "$SANDBOX_DIR/wp-content/themes" ]; then
+        for theme_dir in "$SANDBOX_DIR/wp-content/themes"/*; do
             if [ -d "$theme_dir" ]; then
-                projects+=("themes/$(basename "$theme_dir")")
+                projects+=("wp-content/themes/$(basename "$theme_dir")")
             fi
         done
     fi
@@ -235,6 +243,7 @@ get_sandbox_project_path() {
 # Create a temporary git repo for a project (needed for wp-release)
 setup_temp_git_repo() {
     local project_path="$1"
+    local fake_remote_path="${project_path}.remote.git"
 
     if [ ! -d "$project_path" ]; then
         return 1
@@ -242,18 +251,36 @@ setup_temp_git_repo() {
 
     cd "$project_path"
 
-    # Initialize git repo if not exists
     if [ ! -d ".git" ]; then
         git init >/dev/null 2>&1
         git config user.email "test@wp-build-tools.test" >/dev/null 2>&1
         git config user.name "WP Build Tools Test" >/dev/null 2>&1
 
-        # Create initial commit
+        # Ensure CHANGELOG.md has the [NEXT_VERSION] template required by git_create_release_quiet.
+        if [ -f "CHANGELOG.md" ]; then
+            if ! grep -q "## \[NEXT_VERSION\]" "CHANGELOG.md"; then
+                sed -i "1s/^/## [NEXT_VERSION] - [UNRELEASED]\n* BUG: Test release.\n\n/" "CHANGELOG.md"
+            fi
+        else
+            local current_version
+            current_version=$(jq -r '.version' package.json 2>/dev/null || echo "1.0.0")
+            printf "## [NEXT_VERSION] - [UNRELEASED]\n* BUG: Test release.\n\n## [%s] - %s\n* Initial release.\n" \
+                "$current_version" "$(date +%Y-%m-%d)" > "CHANGELOG.md"
+        fi
+
+        # Create initial commit on main branch.
         git add . >/dev/null 2>&1
         git commit -m "Initial test commit" >/dev/null 2>&1
+        git branch -M main >/dev/null 2>&1
 
-        # Create development branch (required by wp-release)
+        # Set up a local bare repo as the fake origin so all pushes stay local.
+        git init --bare "$fake_remote_path" >/dev/null 2>&1
+        git remote add origin "$fake_remote_path" >/dev/null 2>&1
+        git push -q --set-upstream origin main >/dev/null 2>&1
+
+        # Create development branch (required by git_create_release_quiet).
         git checkout -b development >/dev/null 2>&1
+        git push -q --set-upstream origin development >/dev/null 2>&1
     fi
 
     return 0
