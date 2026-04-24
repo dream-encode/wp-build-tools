@@ -1,7 +1,10 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.9.6] - 2026-04-23
 * BUG: Publish - Kill me.
+
+## [0.9.5] - 2026-04-23
+* BUG: Publish - Try again.
 
 ## [0.9.5] - 2026-04-23
 * BUG: Publish - Another fix.
