@@ -1,6 +1,6 @@
 {
   "name": "@dream-encode/wp-build-tools",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Some scripts to help handle builds, releases, testing, etc.",
   "homepage": "https://github.com/dream-encode/wp-build-tools#readme",
   "type": "commonjs",
@@ -13,6 +13,7 @@
   },
   "license": "GPL-2.0-or-later",
   "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
     "access": "public"
   },
   "author": "David B",
