@@ -303,9 +303,6 @@ run_single_project_test() {
     # Setup temporary git repo
     setup_temp_git_repo "$project_path"
 
-    # Backup project state
-    backup_project_state "$project_path"
-
     # Run wp-release in sandbox mode (no actual git operations)
     local wp_release_result
     wp_release_result=$(run_wp_release_sandbox "$project_path")
@@ -319,6 +316,8 @@ run_single_project_test() {
         local expected_version=$(extract_version_from_output "$wp_release_result")
         local zip_file=$(extract_zip_file_from_output "$wp_release_result")
 
+        print_color "$CYAN" "  📦 ZIP: $zip_file"
+
         # Run validations
         if validate_project "$project_path" "$expected_version" "$zip_file"; then
             record_test_result "$project_name" "full-release" "PASS" "All validations passed" "$test_duration"
@@ -331,9 +330,6 @@ run_single_project_test() {
         record_test_result "$project_name" "full-release" "FAIL" "wp-release failed" "$test_duration"
         print_color "$RED" "  ❌ wp-release failed"
     fi
-
-    # Restore project state
-    restore_project_state "$project_path"
 }
 
 # Extract version from wp-release output
@@ -345,7 +341,7 @@ extract_version_from_output() {
 # Extract ZIP file path from wp-release output
 extract_zip_file_from_output() {
     local output="$1"
-    echo "$output" | grep -o "/tmp/.*\.zip" | head -1
+    echo "$output" | grep -o "Created release asset: .*\.zip" | head -1 | sed 's/Created release asset: //'
 }
 
 # Run wp-release in sandbox mode (simulated)
@@ -414,48 +410,77 @@ run_wp_release_sandbox() {
         sed -i "s/\[NEXT_VERSION\]/## [$new_version] - $current_date/" CHANGELOG.md 2>/dev/null || true
     fi
 
+    # 5.5. Run build script (mirrors real wp_create_release -> build_for_production)
+    local build_script=""
+    if jq -e '.scripts.production' package.json >/dev/null 2>&1; then
+        build_script="production"
+    elif jq -e '.scripts.build' package.json >/dev/null 2>&1; then
+        build_script="build"
+    fi
+
+    local package_manager
+    package_manager=$(get_package_manager_for_project)
+
+    if [ -n "$build_script" ]; then
+        # Install all deps (including devDeps) so the build tools are available.
+        if [ "$package_manager" = "yarn" ]; then
+            yarn --silent install --frozen-lockfile >/dev/null 2>&1 || true
+        else
+            npm --silent install >/dev/null 2>&1 || true
+        fi
+        "$package_manager" --silent run "$build_script" >/dev/null 2>&1 || true
+    fi
+
+    # After building, prune node_modules to only production deps (mirroring real release behavior).
+    if [ -f "package.json" ] && command -v jq >/dev/null 2>&1; then
+        local npm_prod_deps=$(jq '.dependencies | length' package.json 2>/dev/null || echo "0")
+        if [ "$npm_prod_deps" -gt 0 ]; then
+            # Has production deps - prune devDeps so ZIP only contains what's needed.
+            if [ "$package_manager" = "yarn" ]; then
+                yarn --silent install --production=true >/dev/null 2>&1 || true
+            else
+                npm --silent prune --omit=dev >/dev/null 2>&1 || true
+            fi
+        else
+            # No production deps - remove node_modules entirely so it's excluded from ZIP.
+            rm -rf node_modules
+        fi
+    fi
+
+    # Install composer production deps if project has them (excluding dev-only deps).
+    if [ -f "composer.json" ] && command -v composer >/dev/null 2>&1; then
+        local composer_prod_deps=$(jq '.require | length' composer.json 2>/dev/null || echo "0")
+        local composer_php_only=$(jq '.require | keys | length == 1 and .[0] == "php"' composer.json 2>/dev/null || echo "false")
+        if [ "$composer_prod_deps" -gt 0 ] && [ "$composer_php_only" != "true" ]; then
+            composer install --no-dev --optimize-autoloader --quiet 2>/dev/null || true
+        fi
+    fi
+
     # 6. Create ZIP file with updated content
-    local zip_file="/tmp/${project_name}-${new_version}.zip"
+    local zip_dir
+    zip_dir="$(get_cross_platform_temp_dir)/wp-build-tools-tests"
+    mkdir -p "$zip_dir"
+    local zip_file="${zip_dir}/${project_name}-${new_version}.zip"
 
     # Remove old ZIP file if it exists
     [ -f "$zip_file" ] && rm -f "$zip_file"
 
-    # Create a proper ZIP file with updated project contents (excluding development files and third-party .git)
+    # Use the same exclusion logic as the real wp-release (get_zip_folder_exclusions is sourced from general-functions.sh)
+    local exclusions=($(get_zip_folder_exclusions))
+    local sevenz_exclusions=($(get_7z_exclusions "${exclusions[@]}"))
+
     if command -v 7z >/dev/null 2>&1; then
-        7z a "$zip_file" . \
-            -x!.git -x!.git/* -x!**/.git -x!**/.git/* \
-            -x!.gitignore -x!.gitattributes -x!**/.gitignore -x!**/.gitattributes \
-            -x!.github -x!.github/* -x!**/.github -x!**/.github/* \
-            -x!node_modules -x!node_modules/* -x!**/node_modules -x!**/node_modules/* \
-            -x!vendor -x!vendor/* -x!**/vendor -x!**/vendor/* \
-            -x!tests -x!tests/* -x!**/tests -x!**/tests/* \
-            -x!.wp-build-exclusions -x!.wakatime-project -x!.distignore \
-            -x!*.log -x!*.tmp \
-            >/dev/null 2>&1
+        7z a "$zip_file" . "${sevenz_exclusions[@]}" >/dev/null 2>&1
     elif command -v zip >/dev/null 2>&1; then
-        zip -r "$zip_file" . \
-            -x ".git/*" "*/.git/*" "**/.git/*" \
-            ".gitignore" ".gitattributes" "*/.gitignore" "*/.gitattributes" \
-            ".github/*" "*/.github/*" "**/.github/*" \
-            "node_modules/*" "*/node_modules/*" "**/node_modules/*" \
-            "vendor/*" "*/vendor/*" "**/vendor/*" \
-            "tests/*" "*/tests/*" "**/tests/*" \
-            ".wp-build-exclusions" ".wakatime-project" ".distignore" \
-            "*.log" "*.tmp" \
-            >/dev/null 2>&1
+        local zip_excludes=()
+        for exclusion in "${exclusions[@]}"; do
+            local clean="${exclusion#./}"
+            zip_excludes+=("-x" "${clean}" "${clean}/*" "*/${clean}" "*/${clean}/*")
+        done
+        zip -r -q "$zip_file" . "${zip_excludes[@]}" >/dev/null 2>&1
     else
-        # Fallback: create a basic ZIP with main files
-        tar -czf "${zip_file%.zip}.tar.gz" \
-            --exclude='.git' --exclude='*/.git' --exclude='**/.git' \
-            --exclude='.gitignore' --exclude='.gitattributes' \
-            --exclude='*/.gitignore' --exclude='*/.gitattributes' \
-            --exclude='.github' --exclude='*/.github' --exclude='**/.github' \
-            --exclude='node_modules' --exclude='*/node_modules' --exclude='**/node_modules' \
-            --exclude='vendor' --exclude='*/vendor' --exclude='**/vendor' \
-            --exclude='tests' --exclude='*/tests' --exclude='**/tests' \
-            --exclude='.wp-build-exclusions' --exclude='.wakatime-project' --exclude='.distignore' \
-            --exclude='*.log' --exclude='*.tmp' \
-            . >/dev/null 2>&1
+        local tar_exclusions=($(get_tar_exclusions "${exclusions[@]}"))
+        tar -czf "${zip_file%.zip}.tar.gz" "${tar_exclusions[@]}" . >/dev/null 2>&1
         mv "${zip_file%.zip}.tar.gz" "$zip_file"
     fi
 

@@ -78,6 +78,7 @@ copy_test_projects() {
     echo "Copied $copied_count projects successfully"
     if [ $failed_count -gt 0 ]; then
         print_color "$YELLOW" "⚠️  Failed to copy $failed_count projects"
+        WARNING_COUNT=$((WARNING_COUNT + 1))
     fi
 
     print_color "$GREEN" "✅ Project preparation complete"
@@ -101,8 +102,6 @@ copy_single_project() {
         return 1
     fi
 
-
-
     # Use tar to copy with exclusions (much faster than cp for large directories)
     if [ "$VERBOSE" = true ]; then
         echo "    Using tar with exclusions..."
@@ -122,10 +121,27 @@ copy_single_project() {
         echo "    Using optimized copy with post-exclusion cleanup..."
     fi
 
-    # First, copy everything quickly
+    # Determine block plugin status and set exclusions
+    local tar_excludes="--exclude=node_modules --exclude=vendor --exclude=.git"
+
+    local is_block=false
+    if [ -d "$source_path/src" ] && [ -f "$source_path/package.json" ]; then
+        if find "$source_path" -name "block.json" -not -path "*/node_modules/*" -not -path "*/vendor/*" 2>/dev/null | grep -q .; then
+            is_block=true
+        fi
+    fi
+
+    if [ "$is_block" = true ]; then
+        tar_excludes="$tar_excludes --exclude=build"
+    else
+        tar_excludes="$tar_excludes --exclude=admin/assets/dist --exclude=public/assets/dist --exclude=assets/dist"
+    fi
+
+    # First, copy everything quickly with exclusions
     (
         cd "$source_path" || exit 1
-        tar -cf - . | (cd "$dest_path" && tar -xf -)
+        # shellcheck disable=SC2086 # Allow word splitting for tar_excludes
+        tar $tar_excludes -cf - . | (cd "$dest_path" && tar -xf -)
     )
 
     # Then remove excluded items (including third-party .git files)
@@ -139,9 +155,6 @@ copy_single_project() {
     find "$dest_path" -name '.gitattributes' -type f -delete 2>/dev/null || true
     find "$dest_path" -name '.github' -type d -exec rm -rf {} + 2>/dev/null || true
 
-    # Remove node_modules and vendor if they exist (but keep them for now as they might be needed)
-    # find "$dest_path" -name 'node_modules' -type d -exec rm -rf {} + 2>/dev/null || true
-    # find "$dest_path" -name 'vendor' -type d -exec rm -rf {} + 2>/dev/null || true
 
     # Remove log and temp files
     find "$dest_path" -name '*.log' -type f -delete 2>/dev/null || true

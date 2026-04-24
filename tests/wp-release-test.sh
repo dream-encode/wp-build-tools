@@ -15,6 +15,7 @@ MAX_MARINE_SOURCE="F:/MaxMarineAssets/Code/wp-content"
 # Source required libraries
 source "$PROJECT_ROOT/bin/lib/platform-utils.sh"
 source "$PROJECT_ROOT/bin/lib/tool-checker.sh"
+source "$PROJECT_ROOT/bin/lib/general-functions.sh"
 source "$SCRIPT_DIR/lib/test-sandbox.sh"
 source "$SCRIPT_DIR/lib/test-validation.sh"
 source "$SCRIPT_DIR/lib/test-config.sh"
@@ -30,6 +31,7 @@ VERBOSE=false
 declare -a TEST_RESULTS=()
 declare -a FAILED_TESTS=()
 declare -a PASSED_TESTS=()
+WARNING_COUNT=0
 
 # Colors for output
 RED='\033[0;31m'
@@ -160,12 +162,16 @@ main() {
     print_header "5️⃣  TEST RESULTS"
     generate_test_report
 
-    # Step 6: Cleanup (unless keeping sandbox)
-    if [ "$KEEP_SANDBOX" != true ]; then
+    # Step 6: Cleanup (unless keeping sandbox or there are failures/warnings)
+    if [ "$KEEP_SANDBOX" != true ] && [ ${#FAILED_TESTS[@]} -eq 0 ] && [ "$WARNING_COUNT" -eq 0 ]; then
         print_header "6️⃣ CLEANUP"
         cleanup_sandbox
     else
-        print_color "$YELLOW" "⚠️  Keeping sandbox for debugging: $SANDBOX_DIR"
+        if [ ${#FAILED_TESTS[@]} -gt 0 ] || [ "$WARNING_COUNT" -gt 0 ]; then
+            print_color "$YELLOW" "⚠️  Keeping sandbox due to test failures or warnings: $SANDBOX_DIR"
+        else
+            print_color "$YELLOW" "⚠️  Keeping sandbox for debugging: $SANDBOX_DIR"
+        fi
     fi
 
     # Final summary
