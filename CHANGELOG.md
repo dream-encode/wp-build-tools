@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.9] - 2026-04-24
+* BUG: Publish - Update package.json.
+
 ## [0.9.8] - 2026-04-23
 * BUG: Publish - One more time tonight X2.
 

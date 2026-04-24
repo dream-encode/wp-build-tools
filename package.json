@@ -1,6 +1,6 @@
 {
-  "name": "@dream-encode/wp-build-tools",
-  "version": "0.9.8",
+  "name": "dream-encode-wp-build-tools",
+  "version": "0.9.9",
   "description": "Some scripts to help handle builds, releases, testing, etc.",
   "homepage": "https://github.com/dream-encode/wp-build-tools#readme",
   "type": "commonjs",
@@ -9,12 +9,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dream-encode/wp-build-tools.git"
+    "url": "https://github.com/dream-encode/wp-build-tools.git"
   },
   "license": "GPL-2.0-or-later",
-  "publishConfig": {
-    "access": "public"
-  },
   "author": "David B",
   "bin": {
     "wp-release": "./bin/wp-release.js",
