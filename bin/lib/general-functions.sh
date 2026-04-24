@@ -86,8 +86,29 @@ function bump_package_json_version() {
         exit 1
     fi
 
+    # Update main package.json
     jq ".version=\"$VERSION\"" package.json > /tmp/package.json
     mv /tmp/package.json package.json
+
+    # Check if we're in the Clay Humane Events app directory
+    local current_path=$(pwd)
+    if [[ "$current_path" == *"F:\\ClayHumane\\EventsApp\\clay-humane-events"* ]] || [[ "$current_path" == *"F:/ClayHumane/EventsApp/clay-humane-events"* ]]; then
+        echo "Detected Clay Humane Events app directory. Also updating api and frontend package.json files..."
+
+        # Update api/package.json if it exists
+        if [ -f "api/package.json" ]; then
+            jq ".version=\"$VERSION\"" api/package.json > /tmp/api_package.json
+            mv /tmp/api_package.json api/package.json
+            echo "Updated version in api/package.json."
+        fi
+
+        # Update frontend/package.json if it exists
+        if [ -f "frontend/package.json" ]; then
+            jq ".version=\"$VERSION\"" frontend/package.json > /tmp/frontend_package.json
+            mv /tmp/frontend_package.json frontend/package.json
+            echo "Updated version in frontend/package.json."
+        fi
+    fi
 }
 
 # Get package manager for project (yarn or npm).

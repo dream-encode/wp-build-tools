@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Exclude .git dir when checking for Ray debugging.
+
 ## [0.9.1] - 2025-10-24
 * TWK: Remove exceptions for the Max Marine warehouse operations plugin filename.
 
