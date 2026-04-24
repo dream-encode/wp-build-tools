@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.9.4] - 2026-04-23
 * BUG: Publish - Add back token.
 
 ## [0.9.3] - 2026-04-23
