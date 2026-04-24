@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.9.9] - 2026-04-24
 * BUG: Publish - Update package.json.
 
 ## [0.9.8] - 2026-04-23
