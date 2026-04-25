@@ -101,6 +101,35 @@ function github_actions_release_workflow_exists() {
     return 1
 }
 
+# Generate a GitHub compare URL between two tags.
+function github_generate_tags_compare_link() {
+    local prev_tag="$1"
+    local current_tag="$2"
+    local repo=$(get_github_repo_info)
+
+    echo "https://github.com/${repo}/compare/${prev_tag}...${current_tag}"
+}
+
+# Append a Full Changelog compare link to an existing GitHub release.
+function github_release_add_compare_link() {
+    local current_version="$1"
+    local current_tag="v${current_version}"
+    local prev_tag=$(git tag -l --sort=-version:refname "v*" | sed -n '2p')
+
+    if [ -z "$prev_tag" ]; then
+        return 0
+    fi
+
+    local compare_url=$(github_generate_tags_compare_link "$prev_tag" "$current_tag")
+    local display="${prev_tag}...${current_tag}"
+    local compare_line="Full Changelog: [${display}](${compare_url})"
+
+    local existing_notes=$(gh release view "$current_tag" --json body -q '.body' 2>/dev/null)
+    local updated_notes="${existing_notes}"$'\n\n'"${compare_line}"
+
+    gh release edit "$current_tag" --notes "$updated_notes" >/dev/null 2>&1
+}
+
 function github_create_release() {
     VERSION=$1
 
@@ -349,6 +378,7 @@ function git_create_release() {
     # Create GitHub release.
     echo "🎉 Creating GitHub release..."
     github_create_release "$CURRENT_VERSION"
+    github_release_add_compare_link "$CURRENT_VERSION"
 
     git_post_create_release "$CURRENT_VERSION" "$CURRENT_BRANCH"
 
@@ -559,6 +589,7 @@ function git_create_release_quiet() {
 
     # Create GitHub release (quietly)
     github_create_release "$CURRENT_VERSION" >/dev/null 2>&1
+    github_release_add_compare_link "$CURRENT_VERSION" >/dev/null 2>&1 || true
 
     echo "    - GitHub release created."
 
