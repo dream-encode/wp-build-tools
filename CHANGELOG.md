@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* TWK: Release -  Don't output the header from the changelog section, just show "Changelog".
 
 ## [0.10.0] - 2026-04-25
 * ENH: Release - Add a Github compare link to the release notes.
