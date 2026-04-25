@@ -122,7 +122,7 @@ function github_release_add_compare_link() {
 
     local compare_url=$(github_generate_tags_compare_link "$prev_tag" "$current_tag")
     local display="${prev_tag}...${current_tag}"
-    local compare_line="Full Changelog: [${display}](${compare_url})"
+    local compare_line="**Full Changelog:** [\`${display}\`](${compare_url})"
 
     local existing_notes=$(gh release view "$current_tag" --json body -q '.body' 2>/dev/null)
     local updated_notes="${existing_notes}"$'\n\n'"${compare_line}"
