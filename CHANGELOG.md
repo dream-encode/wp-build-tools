@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* ENH: Release - Add a Github compare link to the release notes.
 
 ## [0.9.18] - 2026-04-24
 * BUG: Release - Fix sed_inplace.
