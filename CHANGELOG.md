@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.10.0] - 2026-04-25
 * ENH: Release - Add a Github compare link to the release notes.
 

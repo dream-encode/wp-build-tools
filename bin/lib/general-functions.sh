@@ -57,7 +57,7 @@ function extract_version_updates_from_changelog() {
 
     # Parse CHANGELOG.md for changes in version (supports both X.X.X and X.X.X.X formats).
     awk -v ver="$RELEASE_VERSION" '
-        $0 ~ "^## \\[" ver "\\]" { print; version_found=1; next }
+        $0 ~ "^## \\[" ver "\\]" { print "## Changelog"; version_found=1; next }
         /^## \[/ && version_found { exit }
         version_found && /^\*/' "$CHANGELOG_FILE"
 }
