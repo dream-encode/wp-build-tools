@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT_VERSION] - [UNRELEASED]
-* BUG: Example fix description.
+* TWK: Release - More formatting of the compare link.
 
 ## [0.10.1] - 2026-04-25
 * TWK: Release -  Don't output the header from the changelog section, just show "Changelog".
