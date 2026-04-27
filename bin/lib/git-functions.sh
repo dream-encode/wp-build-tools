@@ -559,7 +559,7 @@ function git_create_release_quiet() {
 
             # Commit changes only if there is something to commit.
             git add . >/dev/null 2>&1
-            git diff --cached --quiet || git commit -m "Version $NEW_VERSION bump." >/dev/null 2>&1
+            git diff --cached --quiet || git commit -m "Version $NEW_VERSION bump." >/dev/null 2>&1 || true
         fi
     fi
 

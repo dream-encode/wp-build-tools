@@ -286,6 +286,37 @@ run_all_tests() {
     echo "All project tests completed"
 }
 
+# Run the release a second time on the same sandbox repo to validate retry safety.
+# This catches silent exits from unguarded git commands (e.g. "nothing to commit")
+# that only surface when git state is non-pristine from a previous run.
+run_wp_release_retry_sandbox() {
+    local project_path="$1"
+    local sandbox_bin="$SANDBOX_DIR/bin"
+
+    (
+        set -e
+        cd "$project_path"
+
+        source "$sandbox_bin/lib/platform-utils.sh"
+        source "$sandbox_bin/lib/general-functions.sh"
+        source "$sandbox_bin/lib/git-functions.sh"
+        source "$sandbox_bin/lib/wp-functions.sh"
+
+        github_create_release() { return 0; }
+        github_release_add_compare_link() { return 0; }
+        wp_plugin_update_pot() { return 0; }
+
+        # Re-add [NEXT_VERSION] to CHANGELOG so changelog_check_next_version passes.
+        local current_version
+        current_version=$(jq -r '.version' package.json 2>/dev/null || echo "1.0.0")
+        sed -i "1s/^/## [NEXT_VERSION] - [UNRELEASED]\n* BUG: Retry test entry.\n\n/" "CHANGELOG.md"
+        git add CHANGELOG.md >/dev/null 2>&1
+        git commit -m "Prepare next release cycle" >/dev/null 2>&1
+
+        git_create_release_quiet "patch"
+    )
+}
+
 # Run tests on a single project
 run_single_project_test() {
     local project="$1"
@@ -325,6 +356,19 @@ run_single_project_test() {
         else
             record_test_result "$project_name" "full-release" "FAIL" "Validation failures" "$test_duration"
             print_color "$RED" "  ❌ Failed validation"
+        fi
+
+        # Run retry test: a second release on the same non-pristine repo.
+        # This validates that unguarded git commits don't silently kill the script.
+        local retry_start_time=$(date +%s)
+        if run_wp_release_retry_sandbox "$project_path" >/dev/null 2>&1; then
+            local retry_duration=$(( $(date +%s) - retry_start_time ))
+            record_test_result "$project_name" "retry-release" "PASS" "Second release on same repo succeeded" "$retry_duration"
+            print_color "$GREEN" "  ✅ Retry passed"
+        else
+            local retry_duration=$(( $(date +%s) - retry_start_time ))
+            record_test_result "$project_name" "retry-release" "FAIL" "Second release on same repo failed (silent exit guard regression)" "$retry_duration"
+            print_color "$RED" "  ❌ Retry failed"
         fi
     else
         record_test_result "$project_name" "full-release" "FAIL" "wp-release failed" "$test_duration"

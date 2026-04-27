@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT_VERSION] - [UNRELEASED]
+* BUG: Example fix description.
+
 ## [0.10.2] - 2026-04-25
 * TWK: Release - More formatting of the compare link.
 
