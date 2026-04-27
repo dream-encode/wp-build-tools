@@ -433,7 +433,7 @@ function changelog_update_current_version() {
         if grep -q "## \[NEXT_VERSION\]" "CHANGELOG.md"; then
             sed_inplace "s/^## \[NEXT_VERSION\] - \[UNRELEASED\]/## [$CURRENT_VERSION] - $CURRENT_DATE/" "CHANGELOG.md"
             git add CHANGELOG.md >/dev/null 2>&1
-            git commit -m "Update changelog for v$CURRENT_VERSION" >/dev/null 2>&1
+            git commit -m "Update changelog for v$CURRENT_VERSION" >/dev/null 2>&1 || true
         fi
     fi
 }

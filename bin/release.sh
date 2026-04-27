@@ -5,6 +5,9 @@
 
 set -e
 
+# Trap unexpected errors and print a useful message instead of silently exiting.
+trap 'printf "\n❌ Release failed unexpectedly on line %s (exit code: %s).\n" "$LINENO" "$?" >&2' ERR
+
 # Ensure proper Unicode/emoji support in terminal output
 # This fixes emoji display issues when running via yarn vs npm
 export LANG="${LANG:-en_US.UTF-8}"

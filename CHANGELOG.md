@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.3] - 2026-04-27
+* BUG: Release - Maybe fix BP plugin early exit.
+
 ## [0.10.2] - 2026-04-25
 * TWK: Release - More formatting of the compare link.
 
