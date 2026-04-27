@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.10.3] - 2026-04-27
 * BUG: Release - Maybe fix BP plugin early exit.
 
 ## [0.10.2] - 2026-04-25
