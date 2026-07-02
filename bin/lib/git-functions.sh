@@ -114,7 +114,16 @@ function github_generate_tags_compare_link() {
 function github_release_add_compare_link() {
     local current_version="$1"
     local current_tag="v${current_version}"
-    local prev_tag=$(git tag -l --sort=-version:refname "v*" | sed -n '2p')
+
+    # Previous tag = highest tag strictly below current_tag (version-ordered),
+    # anchored to current_tag rather than assuming it is the highest tag.
+    local prev_tag=$(
+        { git tag -l "v*"; printf '%s\n' "$current_tag"; } \
+            | sort -V -u \
+            | grep -xF -B1 -- "$current_tag" \
+            | head -n1
+    )
+    [ "$prev_tag" = "$current_tag" ] && prev_tag=""
 
     if [ -z "$prev_tag" ]; then
         return 0
