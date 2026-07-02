@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.10.4] - 2026-07-02
 * BUG: More robust version checking in CHANGELOG compare link.
 
 ## [0.10.3] - 2026-04-27
