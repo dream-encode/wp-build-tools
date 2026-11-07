@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT_VERSION] - [UNRELEASED]
+## [0.11.1] - 2026-11-06
 * BUG: Release - Stop before making any change when the current branch is not `development` or `hotfix`, or when `main` does not exist. A repository with no `main` stopped at the merge step, after the tag and GitHub release, and the branch check ran after the POT commit.
 
 ## [0.11.0] - 2026-11-06
