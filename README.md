@@ -48,7 +48,7 @@ npx @dream-encode/wp-build-tools setup --force    # Automatic setup
 ```bash
 wp-release --check-tools    # Verify all tools are installed
 wp-release --test           # Run comprehensive tests
-wp-release --dry-run patch  # Test release process without git operations
+wp-release --dry-run patch  # Report what a release would do, and build the ZIP in a temp directory, with no project, git or GitHub changes
 ```
 
 ## Usage
@@ -68,7 +68,7 @@ wp-release hotfix   # 1.0.0 → 1.0.0.1 (critical fixes)
 # Tool management
 wp-release --check-tools    # Check if all required tools are installed
 wp-release --test           # Run comprehensive compatibility and readiness tests
-wp-release --dry-run patch  # Test release process without git operations
+wp-release --dry-run patch  # Report what a release would do, and build the ZIP in a temp directory, with no project, git or GitHub changes
 wp-release --help           # Show detailed help
 wp-release --version        # Show version info
 ```
@@ -154,7 +154,7 @@ The `wp-zip` command provides standalone ZIP creation functionality for WordPres
 
 1. **Project detection**
    - Automatically detects WordPress plugin or theme directories
-   - Must be run from within `/wp-content/plugins/` or `/wp-content/themes/` directory
+   - Must be run from a `/wp-content/plugins/` or `/wp-content/themes/` directory, or from a folder whose `<folder-name>.php` has a `Plugin Name` header or whose `style.css` has a `Theme Name` header
 
 2. **ZIP type selection**
    - **For install**: Creates ZIP with files at root level (standard WordPress installation format)

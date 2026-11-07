@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.11.0] - 2026-11-06
+* FEA: Release - Add `wp-release --dry-run <patch|minor|major|hotfix>`. It reports the branch, upstream, tag, changelog, debugging code and version files, and builds the ZIP in its own temp directory, without changing the project, git or GitHub. The README already documented this option, but the script rejected it.
+* BUG: Detection - Recognize plugins and themes outside a `wp-content` path by their `Plugin Name` or `Theme Name` header. A plugin in `content/plugins/` was treated as a non-WordPress project, so a release tagged a new version with no header bump, no constant bump and no ZIP.
+* TSK: Tests - Add `tests/test-project-detection.sh` and `tests/test-dry-run.sh`, which need no other projects on disk.
+
 ## [0.10.4] - 2026-07-02
 * BUG: More robust version checking in CHANGELOG compare link.
 
