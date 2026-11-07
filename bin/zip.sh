@@ -79,8 +79,8 @@ if ! is_wp_plugin_dir && ! is_wp_theme_dir; then
     echo "❌ Error: This command must be run from within a WordPress plugin or theme directory."
     echo ""
     echo "Expected directory structure:"
-    echo "  • Plugin: */wp-content/plugins/your-plugin/"
-    echo "  • Theme:  */wp-content/themes/your-theme/"
+    echo "  • Plugin: */wp-content/plugins/your-plugin/, or a your-plugin.php with a Plugin Name header"
+    echo "  • Theme:  */wp-content/themes/your-theme/, or a style.css with a Theme Name header"
     echo ""
     echo "Current directory: $(pwd)"
     exit 1

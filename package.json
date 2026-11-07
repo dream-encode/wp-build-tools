@@ -27,6 +27,8 @@
     "postinstall": "chmod +x bin/release.sh bin/zip.sh && node scripts/postinstall.js",
     "test": "bash tests/wp-release-test.sh",
     "test:quick": "bash tests/wp-release-test.sh --quick",
-    "test:cleanup": "bash tests/wp-release-test.sh --cleanup-only"
+    "test:cleanup": "bash tests/wp-release-test.sh --cleanup-only",
+    "test:detection": "bash tests/test-project-detection.sh",
+    "test:dry-run": "bash tests/test-dry-run.sh"
   }
 }

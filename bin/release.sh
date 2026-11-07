@@ -36,6 +36,8 @@ DESCRIPTION
 
 OPTIONS
     --check-tools      Check if all required tools are installed and configured
+    --dry-run          Report what a release would do and build the ZIP in a temp directory,
+                       without changing the project, git or GitHub. Requires a VERSION_TYPE.
     --test             Run comprehensive compatibility and readiness tests
     --help, -h         Show this help message
     --version, -v      Show version information
@@ -52,6 +54,7 @@ EXAMPLES
     wp-release                    # Interactive mode
     wp-release patch              # Create patch release
     wp-release --check-tools      # Check tool availability
+    wp-release --dry-run minor    # Report what a minor release would do
     wp-release --test             # Run comprehensive tests
 
 WORKFLOW
@@ -98,6 +101,7 @@ EOF
 SHOW_HELP=false
 CHECK_TOOLS=false
 RUN_TESTS=false
+DRY_RUN=false
 VERSION_TYPE=""
 
 while [[ $# -gt 0 ]]; do
@@ -117,6 +121,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --test)
             RUN_TESTS=true
+            shift
+            ;;
+        --dry-run)
+            DRY_RUN=true
             shift
             ;;
         patch|minor|major|hotfix)
@@ -324,6 +332,27 @@ if ! check_all_tools; then
     echo ""
     echo "📖 See README.md for detailed installation instructions"
     echo "🔧 Run 'wp-release --check-tools' for detailed tool status"
+    exit 1
+fi
+
+# Dry run: report only, then exit.
+if [ "$DRY_RUN" = true ]; then
+    case "$VERSION_TYPE" in
+        patch|minor|major|hotfix)
+            ;;
+        *)
+            echo ""
+            echo "Error: --dry-run requires a version type: patch, minor, major or hotfix."
+            exit 1
+            ;;
+    esac
+
+    echo ""
+
+    if wp_release_dry_run "$VERSION_TYPE"; then
+        exit 0
+    fi
+
     exit 1
 fi
 

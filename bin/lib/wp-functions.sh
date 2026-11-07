@@ -164,20 +164,47 @@ function wp_update_plugin_via_git_remote_updater() {
     echo "Skipping remote update for now."
 }
 
-# Check if this is a WordPress plugin directory
+# Read the first 8KB of a file, as WordPress does, and look for a header field.
+function wp_file_has_header() {
+    local file="$1"
+    local header="$2"
+
+    [ -f "$file" ] || return 1
+
+    head -c 8192 "$file" | grep -qiE "^[[:space:]/*#@]*${header}:"
+}
+
+# Check if this is a WordPress plugin directory.
+# Matches a standard wp-content path, or a main plugin file with a "Plugin Name" header
+# so custom content directories such as content/plugins also work.
 function is_wp_plugin_dir() {
     if [[ $PWD/ = */wp-content/plugins/* ]]; then
         return 0
     fi
-    return 1
+
+    if [[ $PWD/ = */wp-content/themes/* ]]; then
+        return 1
+    fi
+
+    wp_file_has_header "$(basename "$PWD").php" "Plugin Name"
 }
 
-# Check if this is a WordPress theme directory
+# Check if this is a WordPress theme directory.
+# Matches a standard wp-content path, or a style.css with a "Theme Name" header.
 function is_wp_theme_dir() {
     if [[ $PWD/ = */wp-content/themes/* ]]; then
         return 0
     fi
-    return 1
+
+    if [[ $PWD/ = */wp-content/plugins/* ]]; then
+        return 1
+    fi
+
+    if wp_file_has_header "$(basename "$PWD").php" "Plugin Name"; then
+        return 1
+    fi
+
+    wp_file_has_header "style.css" "Theme Name"
 }
 
 # Get WordPress plugin name
@@ -263,9 +290,9 @@ function wp_zip() {
     IS_PLUGIN=false
     IS_THEME=false
 
-    if [[ $PWD/ = */wp-content/themes/* ]]; then
+    if is_wp_theme_dir; then
         IS_THEME=true
-    elif [[ $PWD/ = */wp-content/plugins/* ]]; then
+    elif is_wp_plugin_dir; then
         IS_PLUGIN=true
     fi
 
@@ -318,7 +345,7 @@ function wp_zip() {
     ZIP_NAME="$(basename "$CURRENT_DIR")"
 
     if [ "$CHOICE" = "2" ]; then
-        CURRENT_VERSION=$(get_package_json_version)
+        CURRENT_VERSION=${WP_ZIP_VERSION:-$(get_package_json_version)}
         ZIP_NAME="$(basename "$CURRENT_DIR")-v$CURRENT_VERSION"
     fi
 
@@ -410,6 +437,211 @@ function wp_zip() {
         echo $ZIP_FILENAME
     fi
 
+}
+
+# Report what a release would do, without changing the project, git or GitHub.
+# The ZIP is built from a copy in its own temp directory, so it cannot affect a later real release.
+function wp_release_dry_run() {
+    local version_type="$1"
+    local failures=0
+    local warnings=0
+
+    dry_run_ok() { echo "  OK: $1"; }
+    dry_run_warn() { echo "  Warning: $1"; warnings=$((warnings + 1)); }
+    dry_run_fail() { echo "  Failed: $1"; failures=$((failures + 1)); }
+
+    echo "Dry run: no commits, tags, pushes, GitHub releases or project file changes."
+    echo ""
+
+    if ! is_git_repo; then
+        dry_run_fail "Not a git repository."
+        echo ""
+        echo "Dry run result: $failures failed, $warnings warning(s)."
+        return 1
+    fi
+
+    local current_version new_version
+    current_version=$(get_package_json_version)
+    new_version=$(calculate_new_version "$current_version" "$version_type")
+
+    local project_name project_type main_file
+    project_name=$(basename "$PWD")
+    project_type="other"
+    main_file=""
+
+    if is_wp_plugin_dir; then
+        project_type="plugin"
+        main_file="$(wp_plugin_filename)"
+    elif is_wp_theme_dir; then
+        project_type="theme"
+        main_file="style.css"
+    fi
+
+    echo "Project: $project_name ($project_type)"
+    echo "Version: $current_version -> $new_version ($version_type)"
+    echo ""
+    echo "Git:"
+
+    local branch
+    branch=$(git branch --show-current)
+
+    if [ "$branch" = "development" ] || [ "$branch" = "hotfix" ]; then
+        dry_run_ok "Branch is $branch."
+    else
+        dry_run_fail "Releases only run from development or hotfix. Current branch: ${branch:-detached HEAD}."
+    fi
+
+    if git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
+        dry_run_ok "Branch has an upstream."
+    else
+        dry_run_fail "Branch has no upstream. The release would stop at its first push, after the version commit."
+    fi
+
+    if git rev-parse -q --verify refs/heads/main >/dev/null 2>&1 || git rev-parse -q --verify refs/remotes/origin/main >/dev/null 2>&1; then
+        dry_run_ok "Branch main exists."
+    else
+        dry_run_fail "Branch main does not exist. The release would stop at its merge step, after the tag and GitHub release."
+    fi
+
+    if is_working_directory_clean; then
+        dry_run_ok "Working tree is clean."
+    else
+        dry_run_warn "Working tree has changes. The release runs git add . and would include them."
+    fi
+
+    if git rev-parse -q --verify "refs/tags/v$new_version" >/dev/null 2>&1 || [ -n "$(git ls-remote --tags origin "v$new_version" 2>/dev/null)" ]; then
+        dry_run_fail "Tag v$new_version already exists. The release would overwrite it."
+    else
+        dry_run_ok "Tag v$new_version is available."
+    fi
+
+    echo ""
+    echo "Changelog:"
+
+    if changelog_check_next_version; then
+        dry_run_ok "CHANGELOG.md has a [NEXT_VERSION] section."
+
+        if awk '/^## \[NEXT_VERSION\]/ { found = 1; next } /^## / { found = 0 } found' CHANGELOG.md | grep -q "Example fix description"; then
+            dry_run_warn "CHANGELOG.md still has the example entry."
+        fi
+    else
+        dry_run_fail "CHANGELOG.md has no [NEXT_VERSION] - [UNRELEASED] section."
+    fi
+
+    if [ "$project_type" = "other" ]; then
+        echo ""
+        echo "Not a WordPress plugin or theme. No version headers or release asset."
+        echo ""
+        echo "Dry run result: $failures failed, $warnings warning(s)."
+        [ "$failures" -eq 0 ]
+        return
+    fi
+
+    echo ""
+    echo "Debugging code:"
+
+    if wp_check_debugging_code --quiet; then
+        dry_run_ok "None found."
+    else
+        dry_run_fail "Debugging code found. See the list above."
+    fi
+
+    echo ""
+    echo "Version files:"
+
+    if [ ! -f "$main_file" ]; then
+        dry_run_fail "$main_file not found."
+    elif [ "$project_type" = "plugin" ] && ! grep -q '^ \* Version:' "$main_file"; then
+        dry_run_fail "$main_file has no ' * Version:' header line to update."
+    elif [ "$project_type" = "theme" ] && ! grep -qE '^Version:' "$main_file"; then
+        dry_run_fail "$main_file has no 'Version:' header line to update."
+    else
+        dry_run_ok "$main_file header would change to $new_version."
+    fi
+
+    local constant_prefix constant_file
+    constant_prefix=$(echo "$project_name" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+
+    for constant_file in "$main_file" "includes/${project_name}-constants.php" "inc/constants.php"; do
+        if [ -f "$constant_file" ] && grep -qE "define.*${constant_prefix}_(PLUGIN|THEME)_VERSION" "$constant_file"; then
+            dry_run_ok "$constant_file version constant would change to $new_version."
+        fi
+    done
+
+    local next_version_files
+    next_version_files=$(get_next_version_replacement_files)
+
+    if [ -n "$next_version_files" ]; then
+        dry_run_ok "[NEXT_VERSION] would be replaced in $(echo "$next_version_files" | wc -l | tr -d ' ') file(s)."
+    fi
+
+    echo ""
+    echo "Release asset:"
+
+    if ! wp_plugin_has_release_asset; then
+        echo "  Header has no 'Release Asset: true'. No ZIP would be built."
+    elif github_actions_release_workflow_exists; then
+        echo "  .github/workflows/release.yml exists. The workflow would build the ZIP."
+    else
+        local dry_run_temp zip_path
+        dry_run_temp=$(mktemp -d)
+
+        if zip_path=$(TMPDIR="$dry_run_temp" WP_ZIP_VERSION="$new_version" wp_zip --for-git-updater --quiet) && [ -f "$zip_path" ]; then
+            dry_run_ok "Built $zip_path ($(wc -c < "$zip_path" | tr -d ' ') bytes)."
+
+            local entries
+            entries=$(wp_list_zip_entries "$zip_path")
+
+            if [ -z "$entries" ]; then
+                dry_run_warn "No tool available to list the ZIP contents."
+            else
+                local root_main="${project_name}-v${new_version}/${main_file}"
+
+                if echo "$entries" | grep -qF "$root_main"; then
+                    dry_run_ok "ZIP contains $root_main."
+                else
+                    dry_run_fail "ZIP does not contain $root_main."
+                fi
+
+                local unwanted
+                unwanted=$(echo "$entries" | grep -E "/(tests|vendor|node_modules)(/|\$)" | head -5)
+
+                if [ -n "$unwanted" ]; then
+                    dry_run_warn "ZIP contains tests, vendor or node_modules, for example $(echo "$unwanted" | head -1). This is expected only for production dependencies."
+                fi
+            fi
+
+            echo "  Version files inside this ZIP still show $current_version, because the project was not changed."
+
+            rm -rf "${dry_run_temp:?}/${project_name}-v${new_version}"
+        else
+            dry_run_fail "ZIP build failed."
+        fi
+    fi
+
+    echo ""
+    echo "Skipped: version bump, commits, pushes, release branch, tag, GitHub release, asset upload, merge to main."
+    echo ""
+    echo "Dry run result: $failures failed, $warnings warning(s)."
+
+    [ "$failures" -eq 0 ]
+}
+
+# List ZIP entries with forward slashes, one per line. Empty if no listing tool is available.
+function wp_list_zip_entries() {
+    local zip_path="$1"
+    local tool
+
+    for tool in 7z.exe 7z 7za; do
+        if command -v "$tool" >/dev/null 2>&1; then
+            "$tool" l -ba "$zip_path" 2>/dev/null | sed -E 's/^.{53}//' | tr '\\' '/'
+            return 0
+        fi
+    done
+
+    if command -v unzip >/dev/null 2>&1; then
+        unzip -Z1 "$zip_path" 2>/dev/null
+    fi
 }
 
 # Bump version in WordPress plugin/theme main file
@@ -554,7 +786,7 @@ function wp_create_release() {
     local IS_WP_THEME=false
     local IS_WP_BLOCK_PLUGIN=false
 
-    if [[ $PWD/ = */wp-content/plugins/* ]]; then
+    if is_wp_plugin_dir; then
         IS_WP_PLUGIN=true
         # Check if this is specifically a block plugin
         if is_wp_block_plugin; then
@@ -562,7 +794,7 @@ function wp_create_release() {
         fi
     fi
 
-    if [[ $PWD/ = */wp-content/themes/* ]]; then
+    if is_wp_theme_dir; then
         IS_WP_THEME=true
     fi
 

@@ -512,7 +512,7 @@ function git_create_release_quiet() {
             fi
 
             # Update WordPress plugin/theme files if applicable
-            if [[ $PWD/ = */wp-content/plugins/* ]] || [[ $PWD/ = */wp-content/themes/* ]]; then
+            if is_wp_plugin_dir || is_wp_theme_dir; then
                 if command -v wp_bump_version >/dev/null 2>&1; then
                     wp_bump_version "$NEW_VERSION" >/dev/null 2>&1
 
