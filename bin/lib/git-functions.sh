@@ -315,6 +315,11 @@ function git_sync_upstream() {
     git merge upstream/trunk
 }
 
+# A release merges into main as its last git step, so main must exist locally or on origin.
+function git_main_branch_exists() {
+    git rev-parse -q --verify refs/heads/main >/dev/null 2>&1 || git rev-parse -q --verify refs/remotes/origin/main >/dev/null 2>&1
+}
+
 # Core git release function - handles generic git/GitHub release workflow
 function git_create_release() {
     # Set some vars

@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.11.1] - 2026-11-06
+* BUG: Release - Stop before making any change when the current branch is not `development` or `hotfix`, or when `main` does not exist. A repository with no `main` stopped at the merge step, after the tag and GitHub release, and the branch check ran after the POT commit.
+
 ## [0.11.0] - 2026-11-06
 * FEA: Release - Add `wp-release --dry-run <patch|minor|major|hotfix>`. It reports the branch, upstream, tag, changelog, debugging code and version files, and builds the ZIP in its own temp directory, without changing the project, git or GitHub. The README already documented this option, but the script rejected it.
 * BUG: Detection - Recognize plugins and themes outside a `wp-content` path by their `Plugin Name` or `Theme Name` header. A plugin in `content/plugins/` was treated as a non-WordPress project, so a release tagged a new version with no header bump, no constant bump and no ZIP.
