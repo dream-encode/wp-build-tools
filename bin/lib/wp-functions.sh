@@ -497,7 +497,7 @@ function wp_release_dry_run() {
         dry_run_fail "Branch has no upstream. The release would stop at its first push, after the version commit."
     fi
 
-    if git rev-parse -q --verify refs/heads/main >/dev/null 2>&1 || git rev-parse -q --verify refs/remotes/origin/main >/dev/null 2>&1; then
+    if git_main_branch_exists; then
         dry_run_ok "Branch main exists."
     else
         dry_run_fail "Branch main does not exist. The release would stop at its merge step, after the tag and GitHub release."
@@ -749,6 +749,20 @@ function wp_create_release() {
 
     # Step 1: Pre-release checks
     step_start "[1/6] 🔍 Running pre-release checks"
+
+    local release_branch
+    release_branch=$(git branch --show-current)
+
+    if [ "$release_branch" != "development" ] && [ "$release_branch" != "hotfix" ]; then
+        printf "\n❌ Releases can only be created from the development or hotfix branch. Current branch: %s\n" "$release_branch"
+        return 1
+    fi
+
+    if ! git_main_branch_exists; then
+        printf "\n❌ Branch main does not exist. A release merges into main after it creates the tag and GitHub release. Create main before releasing.\n"
+        return 1
+    fi
+
     if ! wp_check_debugging_code --quiet; then
         printf "\n❌ Found debugging code in plugin. Please correct before releasing.\n"
         return 1

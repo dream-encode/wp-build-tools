@@ -179,6 +179,30 @@ bash "$RELEASE" --dry-run > "$OUT" 2>&1 < /dev/null
 check "no version type exits non-zero" [ $? -ne 0 ]
 check "no version type is reported" output_has "requires a version type"
 
+# A real release stops before any change when it cannot finish.
+make_project realnomain
+git branch -q -D main
+git update-ref -d refs/remotes/origin/main
+: > "$GH_LOG"
+BEFORE="$(snapshot)"
+OUT="$WORK/realnomain.out"
+bash "$RELEASE" minor > "$OUT" 2>&1 < /dev/null
+check "real release with no main exits non-zero" [ $? -ne 0 ]
+check "real release with no main is reported" output_has "Branch main does not exist"
+check "real release with no main changes nothing" [ "$BEFORE" = "$(snapshot)" ]
+check "real release with no main makes no GitHub writes" no_gh_writes
+
+make_project realwrongbranch
+git checkout -q main
+: > "$GH_LOG"
+BEFORE="$(snapshot)"
+OUT="$WORK/realwrongbranch.out"
+bash "$RELEASE" minor > "$OUT" 2>&1 < /dev/null
+check "real release from main exits non-zero" [ $? -ne 0 ]
+check "real release from main is reported" output_has "Releases can only be created from the development or hotfix branch"
+check "real release from main changes nothing" [ "$BEFORE" = "$(snapshot)" ]
+check "real release from main makes no GitHub writes" no_gh_writes
+
 # A real release outside wp-content bumps the version files and uploads a ZIP.
 make_project real
 git config user.name test
